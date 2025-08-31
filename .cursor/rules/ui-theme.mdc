@@ -1,0 +1,148 @@
+---
+description: UI theme — serif-forward retro print aesthetic for all app UI (not the 3D canvas)
+globs:
+  - public/index.html
+  - src/**/*.css
+  - src/**/*.scss
+  - src/**/*.tsx
+  - src/**/*.ts
+alwaysApply: true
+---
+
+# Theme requirements: serif-forward retro print UI
+
+Treat all items as requirements.
+
+## Goals
+- Use a serif-forward, retro print aesthetic with high-contrast headlines, occasional tracked small caps, and paper-like panels.
+- Keep the 3D viewport as outer space with a starfield. Do not apply warm background colors inside the 3D canvas.
+- Avoid em dashes, prefer commas or hyphens.
+
+## Fonts — load and wire up
+1) In `public/index.html` load Google Fonts:
+```html
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+
+	2.	Define font variables:
+
+:root{
+  --font-display:"Fraunces",serif;          /* headlines */
+  --font-serif:"Libre Baskerville",serif;   /* names, body */
+  --font-sans:"Inter",system-ui,sans-serif; /* microcopy and small UI */
+}
+
+Colors — define the palette
+
+:root{
+  --coral:#F45B56;
+  --cream:#F4E7D4;
+  --offwhite:#FDFDFC;
+  --ink:#130909;
+  --maroon:#8A3331;
+  --peach:#F8B5A1;
+  --salmon:#F3847A;
+  --mustard:#F8B933;
+  --coolgray:#BAC0BE;
+  --aqua:#9BB6B8;
+
+  /* app surfaces */
+  --panel-bg:var(--cream);
+  --panel-text:var(--ink);
+  --accent-1:var(--mustard);
+  --accent-2:var(--aqua);
+  --accent-3:var(--salmon);
+}
+
+Global page styling
+
+html,body{height:100%;margin:0;background:var(--coral);color:var(--ink);}
+h1,h2,h3{font-family:var(--font-display);letter-spacing:.2px;}
+p,li,label{font-family:var(--font-serif);}
+.small-ui{font-family:var(--font-sans);font-size:12.5px;letter-spacing:.2px;}
+
+.headline{font-weight:900;color:var(--offwhite);}
+.subhead{font-weight:700;color:var(--aqua);}
+.caps-track{text-transform:uppercase;letter-spacing:.18em;}
+
+.panel{
+  background:var(--panel-bg);
+  color:var(--panel-text);
+  border:1px solid color-mix(in oklab,var(--ink) 10%,transparent);
+  box-shadow:0 1.5px 0 rgba(0,0,0,.25);
+  padding:12px 14px;
+  border-radius:6px;
+}
+
+/* angled collage-style accents behind headings */
+.accent-chip{
+  position:absolute;inset:auto auto 0 0;width:120px;height:70px;
+  transform:rotate(-6deg);background:var(--accent-2);opacity:.85;
+}
+.accent-chip.alt{background:var(--accent-1);transform:rotate(9deg);}
+
+/* minimal control styling */
+.ui input[type="range"]{width:100%;}
+.ui button{
+  background:var(--accent-1);border:none;color:var(--ink);
+  padding:6px 10px;border-radius:4px;cursor:pointer;
+}
+.ui button:focus{outline:2px solid var(--ink);outline-offset:2px;}
+.ui input:focus{outline:2px solid var(--accent-1);}
+
+3D viewport styling
+	•	Renderer clear color must be black.
+	•	Add a starfield. Do not place warm surface colors behind the canvas.
+
+Create src/scene/starfield.ts:
+
+import * as THREE from "three";
+
+export function makeStarfield(count=4000, radius=1200){
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(count*3);
+  for(let i=0;i<count;i++){
+    const r=radius*(0.6+Math.random()*0.4);
+    const th=Math.random()*Math.PI*2;
+    const ph=Math.acos(2*Math.random()-1);
+    pos[i*3+0]=r*Math.sin(ph)*Math.cos(th);
+    pos[i*3+1]=r*Math.sin(ph)*Math.sin(th);
+    pos[i*3+2]=r*Math.cos(ph);
+  }
+  geo.setAttribute("position",new THREE.BufferAttribute(pos,3));
+  const mat=new THREE.PointsMaterial({size:1.2,sizeAttenuation:true,color:0xffffff});
+  const pts=new THREE.Points(geo,mat);
+  pts.frustumCulled=false;
+  return pts;
+}
+
+In scene init:
+
+renderer.setClearColor(0x000000,1);
+scene.add(makeStarfield());
+
+Labels inside the 3D scene
+
+Use Three.js CSS2DRenderer for crisp HTML labels that track points.
+
+.label{
+  font-family:var(--font-serif);font-weight:700;font-size:14px;
+  color:var(--ink);
+  background:color-mix(in oklab,var(--cream) 85%, white 15%);
+  padding:4px 8px;border-radius:4px;
+  border:1px solid color-mix(in oklab,var(--ink) 12%, transparent);
+  box-shadow:0 1px 0 rgba(0,0,0,.18);
+}
+.label--accent{color:var(--maroon);}
+
+Apply .label to “North Node” and “South Node”. Use .label--accent for plane names.
+
+Typography rhythm
+	•	Headline size: clamp(28px, 4.2vw, 48px)
+	•	Subhead size: clamp(17px, 2.2vw, 24px)
+	•	Body text: 15 to 16px with 1.45 line height
+	•	Use tracked caps sparingly for small section titles.
+
+Do not change
+	•	Do not tint or texture the 3D canvas with warm panel colors or paper effects.
+	•	The user must feel they are moving in real space while the surrounding UI uses the serif-forward retro print aesthetic.
