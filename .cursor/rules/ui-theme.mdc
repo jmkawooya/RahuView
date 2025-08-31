@@ -1,17 +1,8 @@
 ---
 description: UI theme — serif-forward retro print aesthetic for all app UI (not the 3D canvas)
-globs:
-  - public/index.html
-  - src/**/*.css
-  - src/**/*.scss
-  - src/**/*.tsx
-  - src/**/*.ts
-alwaysApply: true
+alwaysApply: false
 ---
-
 # Theme requirements: serif-forward retro print UI
-
-Treat all items as requirements.
 
 ## Goals
 - Use a serif-forward, retro print aesthetic with high-contrast headlines, occasional tracked small caps, and paper-like panels.

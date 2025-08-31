@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>RahuView – Lunar Nodes</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,700;9..144,900&family=Libre+Baskerville:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="header">
+        <div class="accent-chip" aria-hidden="true"></div>
+        <h1 class="headline">RahuView</h1>
+        <h2 class="subhead caps-track">Lunar Nodes Model</h2>
+      </header>
+      <main class="layout">
+        <aside class="panel ui" id="ui-panel">
+          <form class="controls small-ui" id="controls" aria-label="Simulation controls">
+            <fieldset>
+              <legend>Motion</legend>
+              <label for="inc">Inclination (deg)</label>
+              <input id="inc" type="range" min="0" max="10" step="0.1" />
+
+              <label for="speed">Speed</label>
+              <input id="speed" type="range" min="0" max="100" step="0.25" />
+
+              <label for="scrub">Scrub</label>
+              <input id="scrub" type="range" min="0" max="1" step="0.001" />
+
+              <div class="row gap">
+                <button id="play" type="button" aria-pressed="false">Play</button>
+                <button id="pause" type="button" aria-pressed="true">Pause</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Visibility</legend>
+              <label><input id="showEcliptic" type="checkbox" checked /> Ecliptic</label>
+              <label><input id="showLunar" type="checkbox" checked /> Lunar Plane</label>
+              <label><input id="showLabels" type="checkbox" checked /> Labels</label>
+              <label><input id="showTrails" type="checkbox" /> Trails</label>
+              <label><input id="showSun" type="checkbox" checked /> Sun</label>
+              <label><input id="showShadows" type="checkbox" checked /> Shadows</label>
+              <label><input id="showEclipse" type="checkbox" /> Eclipse Indicator</label>
+            </fieldset>
+          </form>
+        </aside>
+        <section class="viewport panel">
+          <div id="canvas-wrap" class="scene-root"></div>
+          <div id="eclipse-indicator" class="label" style="position:absolute;left:10px;top:10px;display:none;">Eclipse!</div>
+        </section>
+      </main>
+      <footer class="panel small-ui about">
+        <p>
+          This symbolic model shows the Earth, the ecliptic plane, the Moon's orbital plane, and the
+          lunar nodes where the planes intersect.
+        </p>
+      </footer>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+  </html>
+
+

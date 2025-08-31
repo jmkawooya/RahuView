@@ -1,49 +1,51 @@
 ---
-description: Three.js simulation and architecture - 3D lunar nodes web app
+description: Three.js simulation and architecture - HTML controls, root index.html, visible Sun-Moon-Earth lighting and eclipses
 globs:
+  - index.html
   - src/**/*.ts
   - src/**/*.tsx
-  - public/index.html
-alwaysApply: true
+  - vite.config.ts
+alwaysApply: false
 ---
 
-# Build brief: interactive 3D lunar nodes web app (Three.js)
+# Build brief: interactive 3D lunar nodes web app (Three.js, HTML controls, visible eclipses)
 
 Treat all items as requirements.
 
 ## Goal
-Create a shareable, mobile-friendly, GPU-accelerated web app that shows a symbolic 3D model of Earth at the center, the ecliptic plane, the Moon's orbital plane, and the lunar nodes at their intersection. Keep geometry simple. Keep relative motion speeds accurate. Provide an adjustable playback speed.
+Create a shareable, mobile-friendly, GPU-accelerated web app that shows a symbolic 3D model of Earth at the center, the ecliptic plane, the Moon's orbital plane, and the lunar nodes at their intersection. Keep geometry simple. Keep relative motion speeds accurate. Provide adjustable playback speed and an inclination control. The 3D canvas must render over a black starfield. The Moon must be visible orbiting on its tilted plane radius. The Sun must orbit on a larger ecliptic radius, emit light, and illuminate the Earth as it appears to move around it. When the Moon moves between Sun and Earth near the nodes, it must be visibly obvious that an eclipse is happening.
 
 ## Tech stack
 - Languages: TypeScript, HTML, CSS
 - 3D engine: Three.js
-- Controls: `OrbitControls` from `three/examples/jsm/controls/OrbitControls.js`
-- Labels: `CSS2DRenderer` from `three/examples/jsm/renderers/CSS2DRenderer.js`
-- Dev-only control panel: `lil-gui` or dat.GUI (do not ship it by default)
+- Camera controls: OrbitControls from `three/examples/jsm/controls/OrbitControls.js`
+- Labels: CSS2DRenderer from `three/examples/jsm/renderers/CSS2DRenderer.js`
 - Build tool: Vite
 - Lint and format: ESLint and Prettier
+- Do not use lil-gui. Controls must be first-class HTML in `index.html`.
 
 ## Install
 Add these to `package.json`:
 ```json
 {
   "dependencies": {
-    "three": "^0.168.0",
-    "lil-gui": "^0.19.2"
+    "three": "^0.168.0"
   },
   "devDependencies": {
     "vite": "^5.2.0",
     "typescript": "^5.4.0",
-    "@types/three": "^0.168.0"
+    "@types/three": "^0.168.0",
+    "eslint": "^9.0.0",
+    "prettier": "^3.0.0"
   }
 }
 
 Project structure
 
-/public
-  index.html
+index.html              // root-level for Vite
 /src
   main.ts
+  styles.css
   scene/
     initScene.ts
     camera.ts
@@ -51,23 +53,36 @@ Project structure
     earth.ts
     planes.ts
     moon.ts
+    sun.ts
     nodes.ts
     labels.ts
     starfield.ts
   ui/
-    controls.ts         // lil-gui setup and bindings (dev only)
-    state.ts            // reactive app state (time, speed, inclination, toggles)
+    state.ts            // { time, isPlaying, speedMultiplier, inclinationDeg, toggles }
+    domControls.ts      // wire HTML controls to state, add listeners and ARIA
   utils/
     math.ts             // vectors, quaternions, plane intersection helpers
-    constants.ts        // orbital periods, tilt defaults
-styles.css
+    constants.ts        // periods, angles, radii, thresholds
 vite.config.ts
+.eslintrc.cjs
+.prettierrc
+
+Root HTML with integrated controls
+
+Place index.html at repo root with:
+	•	a container for the 3D canvas
+	•	a visible control panel with labeled inputs
+	•	no inline styles if a theme rule exists. Use semantic labels and ARIA.
+
+Include controls for: play, pause, speed multiplier, inclination, time scrub, show ecliptic, show lunar plane, show labels, show trails, show sun, show shadows, show eclipse indicator.
 
 Visual requirements
-	•	Earth at the origin as a low-poly sphere.
+	•	Earth at the origin as a sphere that can receive light and shadows.
 	•	Ecliptic plane: large translucent ring or disk aligned to world XZ.
-	•	Lunar plane: same geometry, tilted by an adjustable inclination.
-	•	Nodes: show the intersection line of the two planes, and mark the two opposite points as North Node and South Node.
+	•	Lunar plane: same geometry, tilted by an adjustable inclination around world X.
+	•	Moon: a visible sphere placed on a fixed lunar orbit radius on the tilted plane. It must always sit on that ring.
+	•	Sun: a visible glowing sphere placed on a larger sun orbit radius on the ecliptic plane. It must orbit Earth with the sidereal year period. The Sun emits light that illuminates the Earth.
+	•	Nodes: show the intersection line of the two planes, with small markers for North Node and South Node.
 	•	Canvas background is a black starfield.
 
 Physics and timing
@@ -80,13 +95,25 @@ Symbolic, not to scale, but keep relative speeds realistic:
 
 All angular math is in radians internally. Expose degrees in UI.
 
-Create src/utils/constants.ts:
+Create src/utils/constants.ts with at least:
 
 export const SIDEREAL_YEAR_DAYS = 365.25;
 export const SIDEREAL_MONTH_DAYS = 27.321661;
 export const DEFAULT_INCLINATION_DEG = 5.145;
 export const TWO_PI = Math.PI * 2;
 export const MOON_TO_SUN_RATE = SIDEREAL_YEAR_DAYS / SIDEREAL_MONTH_DAYS;
+
+// Scene scale - pick values that render well on screen
+export const EARTH_RADIUS = 2.0;
+export const MOON_ORBIT_RADIUS = 8.0;
+export const MOON_RADIUS = 0.5;
+export const SUN_ORBIT_RADIUS = 40.0;
+export const SUN_RADIUS = 1.2;
+
+// Shadows and detection thresholds
+export const SHADOW_MAP_SIZE = 2048;
+export const ECLIPSE_NODE_THRESHOLD_DEG = 2.0;   // how close to node latitude
+export const ECLIPSE_PHASE_THRESHOLD_DEG = 6.0;  // Sun-Moon angular separation near new
 
 Starfield helper
 
@@ -114,80 +141,119 @@ export function makeStarfield(count = 4000, radius = 1200) {
 
 Interaction requirements
 	•	Use OrbitControls for camera rotation and zoom. Enable damping. Target is Earth’s center.
-	•	Provide controls:
-	•	inclinationDeg range 0..10
-	•	speedMultiplier options 0, 0.25, 1, 5, 20, 100
-	•	timeScrub 0..1 mapping to a full lunar cycle
-	•	Toggles: show ecliptic, show lunar plane, show labels, show trails
-	•	Touch friendly. Ensure controls are usable on mobile.
+	•	HTML controls:
+	•	inclinationDeg updates the lunar plane tilt directly.
+	•	speedMultiplier sets simulated-time speed (0, 0.25, 1, 5, 20, 100 suggested presets).
+	•	timeScrub sets a normalized 0..1 position in the lunar cycle. Scrubbing pauses playback.
+	•	Buttons toggle play or pause and update aria-pressed.
+	•	Checkboxes toggle visibility for ecliptic, lunar plane, labels, trails, sun, and shadows.
+	•	A checkbox toggles an on-screen “Eclipse” indicator when conditions are met.
 
-Labels
-	•	Use CSS2DRenderer for HTML labels that track points. Labels: North Node, South Node, plane names.
+Lighting and shadows - visible sunlight and eclipses
+	•	Enable shadows: renderer.shadowMap.enabled = true and use PCFSoftShadowMap.
+	•	Earth must use a material that receives light and shadows (MeshStandardMaterial or MeshLambertMaterial) and set receiveShadow = true.
+	•	Moon must set castShadow = true and use a standard material.
+	•	Sun implementation:
+	•	Create a sunOrbitGroup rotating around world Y to represent the Sun moving along the ecliptic.
+	•	Inside it, place:
+	•	a visible Sun mesh (sphere) with a glowing look (emissive material or small additive billboard).
+	•	a DirectionalLight or PointLight that moves with the Sun. Directional is recommended. Set:
+	•	light.castShadow = true
+	•	light.shadow.mapSize = SHADOW_MAP_SIZE
+	•	configure shadow camera so Earth and Moon remain inside its frustum through the orbit
+	•	light.target at Earth’s position so the light points toward Earth
+	•	The result must be: as the Sun moves, the lit hemisphere on Earth changes accordingly. When the Moon passes between Sun and Earth near a node, the Moon casts a visible shadow on Earth.
+
+Eclipse detection and indicator
+	•	In each frame, compute:
+	•	Sun direction u = normalize(Earth->Sun vector)
+	•	Moon direction v = normalize(Earth->Moon vector)
+	•	Angular separation sep = acos( clamp( dot(u, v), -1, 1 ) ) in degrees
+	•	Node proximity: compute the Moon’s ecliptic latitude relative to the ecliptic plane (angle between v and the ecliptic plane) in degrees
+	•	A solar eclipse condition is met if:
+	•	sep <= ECLIPSE_PHASE_THRESHOLD_DEG and
+	•	abs(latMoon) <= ECLIPSE_NODE_THRESHOLD_DEG
+	•	When the condition is true:
+	•	the physical shadow already appears on Earth due to shadows
+	•	additionally show a small unobtrusive on-screen indicator like “Eclipse in progress” and briefly highlight node markers
+	•	Provide a UI toggle to enable or disable the indicator without disabling shadows.
 
 Implementation steps
 	1.	Scene init
-Create a WebGLRenderer with antialiasing on desktop. Cap pixel ratio with Math.min(window.devicePixelRatio, 2). Call setSize and update on resize. Set clear color to black. Add the starfield.
+Create a WebGLRenderer with antialiasing on desktop. Set clear color to black. Cap pixel ratio. Append to #canvas-wrap. Add the starfield. Enable renderer.shadowMap.enabled = true.
 	2.	Camera and controls
 Use a PerspectiveCamera with a sensible FOV, near 0.1, far large enough for rings. Attach OrbitControls and enable damping.
 	3.	Lighting
-AmbientLight plus one DirectionalLight. Avoid heavy shadows.
+AmbientLight for base fill. Sun provides the key light as described above. Do not add heavy postprocessing.
 	4.	Earth
-Create a SphereGeometry with a standard material. Optional texture later.
+Create a sphere of EARTH_RADIUS with MeshStandardMaterial or MeshLambertMaterial. Set receiveShadow = true.
 	5.	Planes
-Ecliptic plane: CircleGeometry or RingGeometry with transparent material, aligned to XZ.
-Lunar plane: identical geometry inside a parent Group. Rotate the group by inclinationDeg around the world X axis. Apply rotations via quaternions to avoid gimbal issues.
+Ecliptic plane: CircleGeometry or RingGeometry, aligned to XZ.
+Lunar plane: identical geometry inside a parent Group. Rotate the group by inclinationDeg around world X via quaternions to avoid gimbal issues.
 	6.	Nodes line and markers
 
-	•	Ecliptic normal is world +Y. Lunar normal is +Y rotated by inclinationDeg around X.
+	•	Ecliptic normal is world +Y. Lunar normal is +Y rotated by inclinationDeg about X.
 	•	Intersection direction = normalize(cross(eclipticNormal, lunarNormal)).
 	•	Draw a long thin line through the origin along that direction.
 	•	Place two small markers at opposite ends. Label them North Node and South Node.
 
 	7.	Moon orbit and motion
 
-	•	Use a moonOrbitGroup that rotates around world Y for lunar longitude.
-	•	Inside it, use a lunarTiltGroup that applies inclination to the orbit path.
-	•	Place the Moon mesh at a fixed radius on the tilted orbit.
-	•	Per frame: t += deltaSeconds * speedMultiplier.
-	•	thetaMoon = t * (TWO_PI / SIDEREAL_MONTH_DAYS)
-	•	Optionally add a symbolic Sun with thetaSun = t * (TWO_PI / SIDEREAL_YEAR_DAYS) for ratio correctness.
+	•	Build moonOrbitGroup rotating about world Y for lunar longitude.
+	•	Inside, a lunarTiltGroup that applies inclination to the orbit path.
+	•	Place the Moon mesh at MOON_ORBIT_RADIUS on the tilted orbit, with radius MOON_RADIUS.
+	•	Per frame: if state.isPlaying then elapsed += deltaSeconds * state.speedMultiplier.
+	•	When scrubbing, map state.time to a lunar cycle: thetaMoon = state.time * TWO_PI.
+	•	When playing, thetaMoon = elapsed * (TWO_PI / SIDEREAL_MONTH_DAYS).
 
-	8.	UI binding
+	8.	Sun orbit and sunlight
 
-	•	Maintain a small reactive state object: time, isPlaying, speedMultiplier, inclinationDeg, showEcliptic, showLunarPlane, showLabels.
-	•	In dev, expose these via lil-gui. For production, use simple HTML controls bound to state.
-	•	On inclinationDeg change, rotate only the lunar plane parent group.
-	•	On timeScrub, pause playback and set the Moon angle from the scrub value.
+	•	Build sunOrbitGroup rotating about world Y.
+	•	Place the Sun mesh at SUN_ORBIT_RADIUS with radius SUN_RADIUS.
+	•	Attach a DirectionalLight to the same transform so it moves with the Sun and points toward Earth via light.target.
+	•	Set castShadow on the light and castShadow on Moon. Tune shadow camera so the Earth and Moon stay inside. Increase mapSize to reduce aliasing.
 
-	9.	Labels
+	9.	Eclipse detection
 
-	•	Compute world positions for nodes at a fixed radius along the intersection direction and its opposite.
-	•	Attach CSS2DObject labels to invisible Object3Ds at those positions.
+	•	Each frame, compute separation and node latitude thresholds as described.
+	•	If eclipse condition is met, ensure shadows are visible on Earth and show the indicator. If not, hide the indicator.
 
-	10.	Animation loop
+	10.	Labels
+
+	•	Use CSS2DRenderer for labels that track the nodes and plane names.
+
+	11.	UI binding
+
+	•	domControls.ts wires HTML inputs to state and toggles visibility of ecliptic, lunar plane, labels, trails, sun, and shadows.
+	•	Shadows toggle: set renderer.shadowMap.enabled and light.castShadow accordingly.
+
+	12.	Animation loop
 
 	•	Use requestAnimationFrame. Compute deltaSeconds with a clock.
-	•	If playing, advance state.time. Update Moon angle.
-	•	Update controls damping. Render the WebGL scene, then render CSS2D labels.
+	•	If playing, advance elapsed time.
+	•	Update Moon and Sun angles.
+	•	Update transforms, compute eclipse condition, OrbitControls damping, render WebGL, then render CSS2D labels.
 
-	11.	Responsiveness and performance
+	13.	Responsiveness and performance
 
 	•	Handle resize to update camera aspect and renderer sizes.
 	•	Cap pixel ratio. Reduce segment counts on small screens.
 	•	Keep materials basic. No postprocessing.
 
-	12.	Accessibility
+	14.	Accessibility
 
-	•	Provide keyboard toggles for play or pause and stepping time.
-	•	Provide a text panel that explains what the user is seeing.
+	•	All inputs have <label for> bindings.
+	•	Provide keyboard shortcuts: Space toggles play or pause, ArrowLeft and ArrowRight nudge the scrub.
+	•	Announce state changes as needed via aria-live if you add dynamic text.
 
-	13.	Testing
+	15.	Testing
 
 	•	Verify on Chrome, Safari, Firefox, Android and iOS browsers.
-	•	Confirm that sliders change only the intended axis or parameter.
+	•	Confirm the Moon is always on its orbital ring, the Sun is on the larger ecliptic ring, the lit hemisphere on Earth rotates as the Sun moves, and a visible shadow appears on Earth during alignment.
+	•	Confirm the indicator appears only when thresholds are met.
 
 Deliverables
 	•	A Vite project that builds to static files.
 	•	Source organized per the structure above.
-	•	README with instructions for npm run dev and npm run build.
+	•	README with instructions for npm install, npm run dev, and npm run build.
 
