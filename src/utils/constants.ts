@@ -7,7 +7,7 @@ export const MOON_TO_SUN_RATE = SIDEREAL_YEAR_DAYS / SIDEREAL_MONTH_DAYS;
 export const EARTH_RADIUS = 2.0;
 export const MOON_ORBIT_RADIUS = 8.0;
 export const MOON_RADIUS = 0.5;
-export const SUN_ORBIT_RADIUS = 40.0;
+export const SUN_ORBIT_RADIUS = 14.0;
 export const SUN_RADIUS = 1.2;
 
 // Shadows and thresholds

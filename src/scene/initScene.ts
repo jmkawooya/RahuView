@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { PCFSoftShadowMap } from "three";
 import { makeCamera, makeControls } from "./camera";
-import { addBasicLights } from "./lights";
 import { makeEarth } from "./earth";
 import { makeStarfield } from "./starfield";
 
@@ -39,7 +38,6 @@ export function initScene(container: HTMLElement): SceneBundle {
   window.addEventListener("resize", onResize);
 
   // Scene content
-  addBasicLights(scene);
   scene.add(makeStarfield());
   scene.add(makeEarth());
 

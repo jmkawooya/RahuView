@@ -21,11 +21,12 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   sunMesh.position.set(orbitRadius, 0, 0);
   orbitGroup.add(sunMesh);
 
-  const light = new THREE.DirectionalLight(0xffffff, 1.0);
+  const light = new THREE.DirectionalLight(0xffffff, 1.15);
   light.castShadow = true;
   light.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
+  light.position.set(orbitRadius, 0, 0);
   // Configure shadow camera to cover Earth and Moon throughout the orbit
-  const shadowCam = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.5, 120);
+  const shadowCam = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.5, 60);
   light.shadow.camera = shadowCam;
   orbitGroup.add(light);
 

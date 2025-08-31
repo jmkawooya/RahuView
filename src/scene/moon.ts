@@ -20,7 +20,8 @@ export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
   const moonGeo = new THREE.SphereGeometry(MOON_RADIUS, 16, 12);
   const moonMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 1, metalness: 0 });
   const moon = new THREE.Mesh(moonGeo, moonMat);
-  moon.position.set(orbitRadius, 0, 0);
+  // Place on +Z so X-axis tilt creates an inclined orbital plane (nodes along X)
+  moon.position.set(0, 0, orbitRadius);
   moon.castShadow = true;
   tiltGroup.add(moon);
 
