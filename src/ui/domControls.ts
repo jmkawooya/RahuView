@@ -19,6 +19,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   const showShadows = document.getElementById("showShadows") as HTMLInputElement | null;
   const showEclipse = document.getElementById("showEclipse") as HTMLInputElement | null;
   const showTrails = document.getElementById("showTrails") as HTMLInputElement | null;
+  const showFills = document.getElementById("showFills") as HTMLInputElement | null;
 
   const s = getState();
   if (inc) inc.value = String(s.inclinationDeg);
@@ -31,6 +32,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   if (showShadows) showShadows.checked = s.showShadows;
   if (showEclipse) showEclipse.checked = s.showEclipse;
   if (showTrails) showTrails.checked = s.showTrails;
+  if (showFills) showFills.checked = s.showFills;
 
   function setPlay(p: boolean) {
     actions.set("isPlaying", p);
@@ -94,10 +96,8 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
     showEclipse.addEventListener("change", () => {
       actions.set("showEclipse", showEclipse.checked);
     });
-  if (showTrails)
-    showTrails.addEventListener("change", () => {
-      actions.set("showTrails", showTrails.checked);
-    });
+  if (showTrails) showTrails.addEventListener("change", () => actions.set("showTrails", showTrails.checked));
+  if (showFills) showFills.addEventListener("change", () => actions.set("showFills", showFills.checked));
 }
 
 

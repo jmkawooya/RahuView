@@ -92,6 +92,7 @@ function computeAndRender() {
   sunSys.setVisible(s.showSun);
   renderer.shadowMap.enabled = s.showShadows;
   sunSys.light.castShadow = s.showShadows;
+  planes.setFillsVisible(s.showFills);
 
   // Eclipse detection
   const sunPos = new THREE.Vector3();

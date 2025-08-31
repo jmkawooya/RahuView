@@ -10,6 +10,7 @@ export type AppState = {
   showSun: boolean;
   showShadows: boolean;
   showEclipse: boolean;
+  showFills: boolean;
 };
 
 type Listener = () => void;
@@ -26,6 +27,7 @@ const state: AppState = {
   showSun: true,
   showShadows: true,
   showEclipse: false,
+  showFills: false,
 };
 
 const listeners: Set<Listener> = new Set();
