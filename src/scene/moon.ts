@@ -12,10 +12,10 @@ export type MoonSystem = {
 
 export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
   const root = new THREE.Group();
-  const orbitGroup = new THREE.Group();
   const tiltGroup = new THREE.Group();
-  orbitGroup.add(tiltGroup);
-  root.add(orbitGroup);
+  const orbitGroup = new THREE.Group();
+  tiltGroup.add(orbitGroup);
+  root.add(tiltGroup);
 
   const moonGeo = new THREE.SphereGeometry(MOON_RADIUS, 16, 12);
   const moonMat = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 1, metalness: 0 });
@@ -23,7 +23,7 @@ export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
   // Place on +Z so X-axis tilt creates an inclined orbital plane (nodes along X)
   moon.position.set(0, 0, orbitRadius);
   moon.castShadow = true;
-  tiltGroup.add(moon);
+  orbitGroup.add(moon);
 
   function setInclinationDeg(deg: number) {
     const rad = THREE.MathUtils.degToRad(deg);

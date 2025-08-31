@@ -16,12 +16,13 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   root.add(orbitGroup);
 
   const sunGeo = new THREE.SphereGeometry(SUN_RADIUS, 20, 14);
-  const sunMat = new THREE.MeshBasicMaterial({ color: 0xffe08a });
+  // Emissive material so the sun appears self-illuminated
+  const sunMat = new THREE.MeshStandardMaterial({ color: 0xffe08a, emissive: 0xffd36b, emissiveIntensity: 2.0, roughness: 0.8, metalness: 0 });
   const sunMesh = new THREE.Mesh(sunGeo, sunMat);
   sunMesh.position.set(orbitRadius, 0, 0);
   orbitGroup.add(sunMesh);
 
-  const light = new THREE.DirectionalLight(0xffffff, 1.15);
+  const light = new THREE.DirectionalLight(0xffffff, 1.7);
   light.castShadow = true;
   light.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
   light.position.set(orbitRadius, 0, 0);
