@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>RahuView – Lunar Nodes</title>
+    <!-- Adobe Fonts - Replace YOUR_PROJECT_ID with your actual Adobe Fonts project ID -->
+    <link rel="stylesheet" href="https://use.typekit.net/YOUR_PROJECT_ID.css">
+    <link rel="stylesheet" href="/src/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <!-- Fullscreen 3D Scene -->
+      <main class="fullscreen-scene">
+        <div id="canvas-wrap" class="scene-root"></div>
+        <div id="eclipse-indicator" class="label eclipse-overlay" style="display:none;">Eclipse!</div>
+      </main>
+      
+      <!-- Header Overlay -->
+      <header class="header-overlay">
+        <div class="logo-container">
+          <img src="/Logocv-1024x227-white.png" alt="Art of the Zodiac" class="logo">
+        </div>
+                         <div class="header-text">
+          <h2 class="subhead caps-track">Lunar Nodes Model</h2>
+        </div>
+      </header>
+      
+      <!-- UI Controls Overlay -->
+      <aside class="panel ui controls-overlay" id="ui-panel">
+        <form class="controls small-ui" id="controls" aria-label="Simulation controls">
+          <fieldset>
+            <legend>Motion</legend>
+            <label for="inc">Inclination (deg) <span id="incValue" class="debug-value" style="display:none;"></span></label>
+            <input id="inc" type="range" min="0" max="45" step="0.1" />
+
+            <label for="speed">Speed <span id="speedValue" class="debug-value" style="display:none;"></span></label>
+            <input id="speed" type="range" min="0" max="100" step="0.25" />
+
+            <label for="scrub">Time Scrub <span id="scrubValue" class="debug-value" style="display:none;"></span></label>
+            <input id="scrub" type="range" min="0" max="1" step="0.001" />
+
+            <div class="row gap">
+              <button id="play" type="button" aria-pressed="false">Play</button>
+              <button id="pause" type="button" aria-pressed="true">Pause</button>
+            </div>
+          </fieldset>
+
+          <fieldset>
+            <legend>Positions</legend>
+            <label for="sunAngle">Sun Position <span id="sunAngleValue" class="debug-value" style="display:none;"></span></label>
+            <input id="sunAngle" type="range" min="0" max="1" step="0.001" />
+
+            <label for="moonAngle">Moon Position <span id="moonAngleValue" class="debug-value" style="display:none;"></span></label>
+            <input id="moonAngle" type="range" min="0" max="1" step="0.001" />
+
+            <label for="nodalRegression">Nodal Axis <span id="nodalRegressionValue" class="debug-value" style="display:none;"></span></label>
+            <input id="nodalRegression" type="range" min="0" max="1" step="0.001" />
+          </fieldset>
+
+          <fieldset>
+            <legend>Scale & Thresholds</legend>
+            <label for="earthRadius">Earth Size <span id="earthRadiusValue" class="debug-value" style="display:none;"></span></label>
+            <input id="earthRadius" type="range" min="0.2" max="3" step="0.01" />
+
+            <label for="moonRadius">Moon Size <span id="moonRadiusValue" class="debug-value" style="display:none;"></span></label>
+            <input id="moonRadius" type="range" min="0.05" max="1.5" step="0.01" />
+
+            <label for="sunRadius">Sun Size <span id="sunRadiusValue" class="debug-value" style="display:none;"></span></label>
+            <input id="sunRadius" type="range" min="0.5" max="6" step="0.05" />
+
+            <label for="moonOrbitRadius">Moon Orbit <span id="moonOrbitRadiusValue" class="debug-value" style="display:none;"></span></label>
+            <input id="moonOrbitRadius" type="range" min="5" max="80" step="0.5" />
+
+            <label for="sunOrbitRadius">Sun Orbit <span id="sunOrbitRadiusValue" class="debug-value" style="display:none;"></span></label>
+            <input id="sunOrbitRadius" type="range" min="20" max="140" step="1" />
+
+          </fieldset>
+
+          <fieldset>
+            <legend>Visibility</legend>
+            <label><input id="showEcliptic" type="checkbox" checked /> Ecliptic</label>
+            <label><input id="showLunar" type="checkbox" checked /> Lunar Plane</label>
+            <label><input id="showLabels" type="checkbox" checked /> Labels</label>
+            <label><input id="showFills" type="checkbox" checked /> Fill Planes</label>
+            <label><input id="showEclipse" type="checkbox" checked /> Eclipse Indicator</label>
+            <label><input id="showDebug" type="checkbox" /> Debug Values</label>
+          </fieldset>
+        </form>
+      </aside>
+      
+      <!-- Panel Toggle Button -->
+      <button id="panel-toggle" class="panel-toggle" type="button" aria-controls="ui-panel" aria-expanded="true" aria-label="Hide controls" title="Hide controls">»</button>
+      <div id="zoom-overlay" class="zoom-overlay" style="display:none;">Zoom: <span id="zoomValue"></span></div>
+      
+
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+  </html>
+
+
