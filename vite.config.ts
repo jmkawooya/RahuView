@@ -1,9 +1,13 @@
 import { defineConfig } from "vite";
 
-export default defineConfig({
-  server: {
-    open: true,
-  },
+export default defineConfig(({ mode }) => {
+  const isProduction = mode === "production";
+  return {
+    base: isProduction ? "/RahuView/" : "/",
+    server: {
+      open: true,
+    },
+  };
 });
 
 
