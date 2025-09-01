@@ -8,6 +8,8 @@ export type MoonSystem = {
   moon: THREE.Mesh;
   setInclinationDeg: (deg: number) => void;
   setAngleRad: (theta: number) => void;
+  setRadius: (radius: number) => void;
+  setOrbitRadius: (radius: number) => void;
 };
 
 export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
@@ -22,7 +24,8 @@ export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
   const moon = new THREE.Mesh(moonGeo, moonMat);
   // Place on +Z so X-axis tilt creates an inclined orbital plane (nodes along X)
   moon.position.set(0, 0, orbitRadius);
-  moon.castShadow = true;
+  moon.castShadow = true; // Always cast shadows
+  moon.receiveShadow = true; // Always receive shadows
   orbitGroup.add(moon);
 
   function setInclinationDeg(deg: number) {
@@ -34,7 +37,16 @@ export function makeMoonSystem(orbitRadius = MOON_ORBIT_RADIUS): MoonSystem {
     orbitGroup.rotation.y = theta;
   }
 
-  return { root, orbitGroup, tiltGroup, moon, setInclinationDeg, setAngleRad };
+  function setRadius(radius: number) {
+    const scale = radius / MOON_RADIUS;
+    moon.scale.setScalar(scale);
+  }
+
+  function setOrbitRadius(radius: number) {
+    moon.position.set(0, 0, radius);
+  }
+
+  return { root, orbitGroup, tiltGroup, moon, setInclinationDeg, setAngleRad, setRadius, setOrbitRadius };
 }
 
 

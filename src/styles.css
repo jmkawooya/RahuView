@@ -1,7 +1,7 @@
 :root{
-  --font-display:"Fraunces",serif;
-  --font-serif:"Libre Baskerville",serif;
-  --font-sans:"Inter",system-ui,sans-serif;
+  --font-display:"ltc-globe-gothic",serif;
+  --font-serif:"ltc-globe-gothic",serif;
+  --font-sans:"ltc-globe-gothic",system-ui,sans-serif;
 
   --coral:#F45B56;
   --cream:#F4E7D4;
@@ -26,8 +26,8 @@ h1,h2,h3{font-family:var(--font-display);letter-spacing:.2px;}
 p,li,label{font-family:var(--font-serif);} 
 .small-ui{font-family:var(--font-sans);font-size:12.5px;letter-spacing:.2px;}
 
-.headline{font-weight:900;color:var(--offwhite);font-size:clamp(28px,4.2vw,48px);} 
-.subhead{font-weight:700;color:var(--aqua);font-size:clamp(17px,2.2vw,24px);} 
+.headline{font-weight:400;color:var(--offwhite);font-size:clamp(17px,2.2vw,24px);line-height:1.1;} 
+.subhead{font-weight:400;color:#f45b56;font-size:clamp(17px,2.2vw,24px);line-height:1.1;white-space:nowrap;} 
 .caps-track{text-transform:uppercase;letter-spacing:.18em;}
 
 .panel{
@@ -47,16 +47,154 @@ p,li,label{font-family:var(--font-serif);}
 .ui button:focus{outline:2px solid var(--ink);outline-offset:2px;}
 .ui input:focus{outline:2px solid var(--accent-1);} 
 
-.label{font-family:var(--font-serif);font-weight:700;font-size:14px;color:var(--ink);background:color-mix(in oklab,var(--cream) 85%, white 15%);padding:4px 8px;border-radius:4px;border:1px solid color-mix(in oklab,var(--ink) 12%, transparent);box-shadow:0 1px 0 rgba(0,0,0,.18);} 
+.label{font-family:var(--font-serif);font-weight:700;font-size:14px;color:var(--ink);background:#ffffff;padding:4px 8px;border-radius:4px;border:1px solid color-mix(in oklab,var(--ink) 12%, transparent);box-shadow:0 1px 0 rgba(0,0,0,.18);} 
 .label--accent{color:var(--maroon);} 
 
 /* layout */
-#app{min-height:100%;display:flex;flex-direction:column;gap:12px;} 
-.header{position:relative;padding:18px 16px 8px;}
-.layout{display:grid;grid-template-columns:280px 1fr;gap:12px;padding:0 16px 12px;}
-.viewport{padding:0;overflow:hidden;} 
-.scene-root{position:relative;height:70vh;min-height:420px;background:black;} 
-.about{margin:0 16px 16px;} 
+#app{height:100%;position:relative;overflow:hidden;} 
+
+/* Fullscreen 3D Scene */
+.fullscreen-scene{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  z-index:1;
+}
+.scene-root{
+  position:absolute;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:black;
+} 
+
+/* Header Overlay */
+.header-overlay{
+  position:absolute;
+  top:18px;
+  left:0px;
+  z-index:10;
+  pointer-events:none;
+  display:flex;
+  align-items:flex-start;
+  gap:16px;
+}
+.header-text{
+  position:absolute;
+  top:78px;
+  left:20px;
+  display:flex;
+  flex-direction:column;
+  align-items:flex-start;
+  gap:2px;
+}
+.header-overlay .headline,
+.header-overlay .subhead{
+  pointer-events:none;
+  margin:0;
+}
+
+/* Logo styling */
+.logo-container{
+  flex-shrink:0;
+  margin-left:20px;
+}
+.logo{
+  height:72px;
+  width:auto;
+  opacity:0.9;
+}
+
+/* Controls Overlay */
+.controls-overlay{
+  position:absolute;
+  bottom:20px;
+  left:20px;
+  width:280px;
+  z-index:10;
+  backdrop-filter:blur(8px);
+  background:#ffffff;
+  border:1px solid color-mix(in oklab,var(--ink) 15%,transparent);
+  opacity:0.3;
+  transition:opacity 0.2s ease, transform 0.25s ease;
+}
+.controls-overlay:hover{
+  opacity:1.0;
+}
+
+/* Collapsible panel behavior */
+.controls-overlay.is-collapsed{
+  transform:translateX(-320px);
+  opacity:0; /* reduces visual noise when hidden */
+  pointer-events:none;
+}
+
+/* Toggle button */
+.panel-toggle{
+  position:absolute;
+  bottom:20px;
+  left:20px;
+  z-index:11;
+  width:34px;
+  height:34px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  background:#ffffff;
+  border:none;
+  color:var(--coral);
+  border-radius:9999px;
+  cursor:pointer;
+  font-size:18px;
+  line-height:1;
+  box-shadow:0 1px 0 rgba(0,0,0,.18);
+}
+.panel-toggle:focus{outline:2px solid var(--ink);outline-offset:2px;}
+
+/* Zoom debug overlay */
+.zoom-overlay{
+  position:absolute;
+  right:12px;
+  bottom:12px;
+  z-index:12;
+  font-family:var(--font-sans);
+  font-size:12px;
+  color:#ffffff;
+  background:rgba(0,0,0,0.25);
+  padding:3px 6px;
+  border-radius:4px;
+}
+
+/* Footer Overlay */
+.footer-overlay{
+  position:absolute;
+  bottom:20px;
+  left:16px;
+  right:16px;
+  max-width:400px;
+  z-index:10;
+  backdrop-filter:blur(8px);
+  background:color-mix(in oklab,var(--panel-bg) 95%, transparent);
+  border:1px solid color-mix(in oklab,var(--ink) 15%,transparent);
+}
+
+/* Eclipse indicator overlay */
+.eclipse-overlay{
+  position:absolute;
+  top:20px;
+  left:50%;
+  transform:translateX(-50%);
+  z-index:15;
+  font-size:32px;
+  font-weight:700;
+  background:#ffffff;
+  padding:6px 10px;
+  border-radius:4px;
+  border:1px solid color-mix(in oklab,var(--ink) 12%, transparent);
+} 
 
 /* labels rendered via CSS2DRenderer will be positioned absolutely within its DOM */
 .label { pointer-events: none; }

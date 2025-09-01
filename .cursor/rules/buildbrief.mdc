@@ -1,13 +1,6 @@
 ---
-description: Three.js simulation and architecture - HTML controls, root index.html, visible Sun-Moon-Earth lighting and eclipses
-globs:
-  - index.html
-  - src/**/*.ts
-  - src/**/*.tsx
-  - vite.config.ts
 alwaysApply: false
 ---
-
 # Build brief: interactive 3D lunar nodes web app (Three.js, HTML controls, visible eclipses)
 
 Treat all items as requirements.

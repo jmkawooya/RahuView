@@ -8,6 +8,8 @@ export type SunSystem = {
   light: THREE.DirectionalLight;
   setAngleRad: (theta: number) => void;
   setVisible: (v: boolean) => void;
+  setRadius: (radius: number) => void;
+  setOrbitRadius: (radius: number) => void;
 };
 
 export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
@@ -26,8 +28,8 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   light.castShadow = true;
   light.shadow.mapSize.set(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE);
   light.position.set(orbitRadius, 0, 0);
-  // Configure shadow camera to cover Earth and Moon throughout the orbit
-  const shadowCam = new THREE.OrthographicCamera(-20, 20, 20, -20, 0.5, 60);
+  // Configure shadow camera to cover Earth and Moon throughout the orbit (scaled)
+  const shadowCam = new THREE.OrthographicCamera(-80, 80, 80, -80, 0.5, 160);
   light.shadow.camera = shadowCam;
   orbitGroup.add(light);
 
@@ -43,7 +45,23 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
     root.visible = v;
   }
 
-  return { root, orbitGroup, sunMesh, light, setAngleRad, setVisible };
+  function setRadius(radius: number) {
+    const scale = radius / SUN_RADIUS;
+    sunMesh.scale.setScalar(scale);
+  }
+
+  function setOrbitRadius(radius: number) {
+    sunMesh.position.set(radius, 0, 0);
+    light.position.set(radius, 0, 0);
+    // Expand shadow camera if needed (simple heuristic)
+    const ortho = light.shadow.camera as THREE.OrthographicCamera;
+    const half = Math.max(40, radius * 1.2);
+    ortho.left = -half; ortho.right = half; ortho.top = half; ortho.bottom = -half;
+    ortho.near = 0.5; ortho.far = Math.max(160, radius * 2.0);
+    ortho.updateProjectionMatrix();
+  }
+
+  return { root, orbitGroup, sunMesh, light, setAngleRad, setVisible, setRadius, setOrbitRadius };
 }
 
 

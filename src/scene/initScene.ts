@@ -1,7 +1,6 @@
 import * as THREE from "three";
 import { PCFSoftShadowMap } from "three";
 import { makeCamera, makeControls } from "./camera";
-import { makeEarth } from "./earth";
 import { makeStarfield } from "./starfield";
 
 export type SceneBundle = {
@@ -9,6 +8,7 @@ export type SceneBundle = {
   renderer: THREE.WebGLRenderer;
   camera: THREE.PerspectiveCamera;
   controls: import("three/examples/jsm/controls/OrbitControls.js").OrbitControls;
+  onResize: (callback: () => void) => void;
 };
 
 export function initScene(container: HTMLElement): SceneBundle {
@@ -24,8 +24,14 @@ export function initScene(container: HTMLElement): SceneBundle {
   container.appendChild(renderer.domElement);
 
   const scene = new THREE.Scene();
-  const camera = makeCamera();
+  
+  // Initialize camera with proper aspect ratio
+  const initialAspect = container.clientWidth / container.clientHeight || 1;
+  const camera = makeCamera(initialAspect);
   const controls = makeControls(camera, renderer.domElement);
+
+  // Store resize callbacks
+  const resizeCallbacks: (() => void)[] = [];
 
   // Resize handler
   function onResize() {
@@ -34,14 +40,28 @@ export function initScene(container: HTMLElement): SceneBundle {
     camera.updateProjectionMatrix();
     renderer.setSize(clientWidth, clientHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    
+    // Call external resize callbacks
+    resizeCallbacks.forEach(callback => callback());
   }
   window.addEventListener("resize", onResize);
+  
+  // Call resize immediately to ensure proper initial sizing
+  onResize();
 
   // Scene content
   scene.add(makeStarfield());
-  scene.add(makeEarth());
+  // Earth will be added separately in main.ts as part of EarthSystem
 
-  return { scene, renderer, camera, controls };
+  return { 
+    scene, 
+    renderer, 
+    camera, 
+    controls,
+    onResize: (callback: () => void) => {
+      resizeCallbacks.push(callback);
+    }
+  };
 }
 
 function isMobile(): boolean {

@@ -10,13 +10,14 @@ export type PlanesBundle = {
   lunarFill: THREE.Mesh;
   setInclinationDeg: (deg: number) => void;
   setFillsVisible: (v: boolean) => void;
+  setRadii: (sunRadius: number, moonRadius: number) => void;
 };
 
 export function makePlanes(): PlanesBundle {
   const group = new THREE.Group();
 
-  const eclipticRingGeo = new THREE.RingGeometry(SUN_ORBIT_RADIUS * 0.98, SUN_ORBIT_RADIUS, 96, 1);
-  const lunarRingGeo = new THREE.RingGeometry(MOON_ORBIT_RADIUS * 0.98, MOON_ORBIT_RADIUS, 96, 1);
+  const eclipticRingGeo = new THREE.RingGeometry(SUN_ORBIT_RADIUS * 0.997, SUN_ORBIT_RADIUS, 96, 1);
+  const lunarRingGeo = new THREE.RingGeometry(MOON_ORBIT_RADIUS * 0.997, MOON_ORBIT_RADIUS, 96, 1);
   const eclipticMat = new THREE.MeshBasicMaterial({ color: 0xfff4d1, side: THREE.DoubleSide, transparent: true, opacity: 0.35 });
   const lunarMat = new THREE.MeshBasicMaterial({ color: 0xa1d3d6, side: THREE.DoubleSide, transparent: true, opacity: 0.5 });
 
@@ -26,7 +27,7 @@ export function makePlanes(): PlanesBundle {
   group.add(ecliptic);
 
   // Ecliptic fill (semi-transparent disc)
-  const eclipticFillGeo = new THREE.CircleGeometry(SUN_ORBIT_RADIUS * 0.98, 96);
+  const eclipticFillGeo = new THREE.CircleGeometry(SUN_ORBIT_RADIUS * 0.997, 96);
   const eclipticFillMat = new THREE.MeshBasicMaterial({
     color: 0xfff4d1,
     side: THREE.DoubleSide,
@@ -49,7 +50,7 @@ export function makePlanes(): PlanesBundle {
   lunarParent.add(lunar);
   group.add(lunarParent);
 
-  const lunarFillGeo = new THREE.CircleGeometry(MOON_ORBIT_RADIUS * 0.98, 96);
+  const lunarFillGeo = new THREE.CircleGeometry(MOON_ORBIT_RADIUS * 0.997, 96);
   const lunarFillMat = new THREE.MeshBasicMaterial({
     color: 0xa1d3d6,
     side: THREE.DoubleSide,
@@ -75,9 +76,30 @@ export function makePlanes(): PlanesBundle {
     lunarFill.visible = v;
   }
 
+  function setRadii(sunRad: number, moonRad: number) {
+    // Update ring inner/outer radii to track orbit distances
+    (ecliptic.geometry as THREE.RingGeometry).parameters.innerRadius = sunRad * 0.997;
+    (ecliptic.geometry as THREE.RingGeometry).parameters.outerRadius = sunRad;
+    ecliptic.geometry.dispose();
+    ecliptic.geometry = new THREE.RingGeometry(sunRad * 0.997, sunRad, 96, 1);
+
+    (eclipticFill.geometry as THREE.CircleGeometry).parameters.radius = sunRad * 0.997;
+    eclipticFill.geometry.dispose();
+    eclipticFill.geometry = new THREE.CircleGeometry(sunRad * 0.997, 96);
+
+    (lunar.geometry as THREE.RingGeometry).parameters.innerRadius = moonRad * 0.997;
+    (lunar.geometry as THREE.RingGeometry).parameters.outerRadius = moonRad;
+    lunar.geometry.dispose();
+    lunar.geometry = new THREE.RingGeometry(moonRad * 0.997, moonRad, 96, 1);
+
+    (lunarFill.geometry as THREE.CircleGeometry).parameters.radius = moonRad * 0.997;
+    lunarFill.geometry.dispose();
+    lunarFill.geometry = new THREE.CircleGeometry(moonRad * 0.997, 96);
+  }
+
   setInclinationDeg(DEFAULT_INCLINATION_DEG);
 
-  return { group, ecliptic, eclipticFill, lunarParent, lunar, lunarFill, setInclinationDeg, setFillsVisible };
+  return { group, ecliptic, eclipticFill, lunarParent, lunar, lunarFill, setInclinationDeg, setFillsVisible, setRadii };
 }
 
 

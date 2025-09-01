@@ -19,7 +19,6 @@ export function initDevControls() {
   gui.add(state, "showEcliptic").name("Ecliptic").onChange((v: boolean) => actions.set("showEcliptic", v));
   gui.add(state, "showLunarPlane").name("Lunar Plane").onChange((v: boolean) => actions.set("showLunarPlane", v));
   gui.add(state, "showLabels").name("Labels").onChange((v: boolean) => actions.set("showLabels", v));
-  gui.add(state, "showTrails").name("Trails").onChange((v: boolean) => actions.set("showTrails", v));
 
   // time scrub 0..1 -> full lunar cycle in days
   const proxy = { phase: (state.time % SIDEREAL_MONTH_DAYS) / SIDEREAL_MONTH_DAYS };

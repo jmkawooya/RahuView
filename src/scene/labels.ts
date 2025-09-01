@@ -6,6 +6,7 @@ export type LabelsBundle = {
   northLabel: CSS2DObject;
   southLabel: CSS2DObject;
   setEnabled: (enabled: boolean) => void;
+  updateOcclusion: (camera: THREE.Camera, scene: THREE.Scene) => void;
 };
 
 export function makeNodeLabels(northTarget: THREE.Object3D, southTarget: THREE.Object3D): LabelsBundle {
@@ -13,61 +14,97 @@ export function makeNodeLabels(northTarget: THREE.Object3D, southTarget: THREE.O
   renderer.setSize(0, 0); // will be resized by caller
   renderer.domElement.style.position = "absolute";
   renderer.domElement.style.top = "0";
+  renderer.domElement.style.left = "0";
+  renderer.domElement.style.width = "100%";
+  renderer.domElement.style.height = "100%";
   renderer.domElement.style.pointerEvents = "none";
+  renderer.domElement.style.zIndex = "5"; // Between scene (1) and overlays (10)
+
+  // Create offset anchors for node labels positioned off to the side
+  const northAnchor = new THREE.Object3D();
+  northAnchor.position.set(1.2, 0.8, 0); // Offset to the side and up from the node
+  northTarget.add(northAnchor);
+
+  const southAnchor = new THREE.Object3D();
+  southAnchor.position.set(-1.2, -0.8, 0); // Offset to the opposite side and down from the node
+  southTarget.add(southAnchor);
 
   const northEl = document.createElement("div");
   northEl.className = "label";
-  northEl.textContent = "North Node";
+  northEl.textContent = "☊"; // North Node (Rahu) symbol only
   const northLabel = new CSS2DObject(northEl);
-  northTarget.add(northLabel);
+  northAnchor.add(northLabel);
 
   const southEl = document.createElement("div");
   southEl.className = "label";
-  southEl.textContent = "South Node";
+  southEl.textContent = "☋"; // South Node (Ketu) symbol only
   const southLabel = new CSS2DObject(southEl);
-  southTarget.add(southLabel);
+  southAnchor.add(southLabel);
+
+  // Raycaster for occlusion testing
+  const raycaster = new THREE.Raycaster();
+  let labelsEnabled = true;
 
   function setEnabled(enabled: boolean) {
-    northEl.style.display = enabled ? "block" : "none";
-    southEl.style.display = enabled ? "block" : "none";
+    labelsEnabled = enabled;
+    // Hide/show the entire labels overlay and the label objects for reliability
+    renderer.domElement.style.display = enabled ? "block" : "none";
+    northLabel.visible = enabled;
+    southLabel.visible = enabled;
+    updateLabelVisibility();
   }
 
-  return { renderer, northLabel, southLabel, setEnabled };
-}
-
-export function makePlaneNameLabels(
-  eclipticObj: THREE.Object3D,
-  lunarParent: THREE.Object3D,
-  eclipticRadius = 8,
-  lunarRadius = 6,
-) {
-  const eclipticAnchor = new THREE.Object3D();
-  eclipticAnchor.position.set(eclipticRadius, 0, 0);
-  eclipticObj.add(eclipticAnchor);
-
-  const lunarAnchor = new THREE.Object3D();
-  // Place lunar label on opposite side with a small upward offset to avoid overlap
-  lunarAnchor.position.set(-lunarRadius, 0.25, 0);
-  lunarParent.add(lunarAnchor);
-
-  const eclipticEl = document.createElement("div");
-  eclipticEl.className = "label label--accent";
-  eclipticEl.textContent = "Ecliptic";
-  const eclipticLabel = new CSS2DObject(eclipticEl);
-  eclipticAnchor.add(eclipticLabel);
-
-  const lunarEl = document.createElement("div");
-  lunarEl.className = "label label--accent";
-  lunarEl.textContent = "Lunar Plane";
-  const lunarLabel = new CSS2DObject(lunarEl);
-  lunarAnchor.add(lunarLabel);
-
-  function setEnabled(enabled: boolean) {
-    eclipticEl.style.display = enabled ? "block" : "none";
-    lunarEl.style.display = enabled ? "block" : "none";
+  function updateLabelVisibility() {
+    const display = labelsEnabled ? "block" : "none";
+    northEl.style.display = display;
+    southEl.style.display = display;
   }
 
-  return { eclipticLabel, lunarLabel, setEnabled };
+  function updateOcclusion(camera: THREE.Camera, scene: THREE.Scene) {
+    if (!labelsEnabled) return;
+
+    // Get world positions of label anchors
+    const northWorldPos = new THREE.Vector3();
+    const southWorldPos = new THREE.Vector3();
+    northAnchor.getWorldPosition(northWorldPos);
+    southAnchor.getWorldPosition(southWorldPos);
+
+    // Get camera position
+    const cameraPos = new THREE.Vector3();
+    camera.getWorldPosition(cameraPos);
+
+    // Check occlusion for north label
+    const northDirection = northWorldPos.clone().sub(cameraPos).normalize();
+    const northDistance = cameraPos.distanceTo(northWorldPos);
+    raycaster.set(cameraPos, northDirection);
+    raycaster.far = northDistance - 0.1; // Stop just before the label
+    
+    const northIntersects = raycaster.intersectObjects(scene.children, true);
+    const northOccluded = northIntersects.some(intersect => 
+      intersect.object.type === 'Mesh' && 
+      intersect.object !== northAnchor && 
+      intersect.object !== northLabel &&
+      intersect.distance < northDistance - 0.1
+    );
+
+    // Check occlusion for south label  
+    const southDirection = southWorldPos.clone().sub(cameraPos).normalize();
+    const southDistance = cameraPos.distanceTo(southWorldPos);
+    raycaster.set(cameraPos, southDirection);
+    raycaster.far = southDistance - 0.1; // Stop just before the label
+    
+    const southIntersects = raycaster.intersectObjects(scene.children, true);
+    const southOccluded = southIntersects.some(intersect => 
+      intersect.object.type === 'Mesh' && 
+      intersect.object !== southAnchor && 
+      intersect.object !== southLabel &&
+      intersect.distance < southDistance - 0.1
+    );
+
+    // Update label visibility based on occlusion
+    northEl.style.display = labelsEnabled && !northOccluded ? "block" : "none";
+    southEl.style.display = labelsEnabled && !southOccluded ? "block" : "none";
+  }
+
+  return { renderer, northLabel, southLabel, setEnabled, updateOcclusion };
 }
-
-

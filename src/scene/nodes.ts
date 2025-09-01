@@ -6,6 +6,7 @@ export type NodesBundle = {
   northMarker: THREE.Object3D;
   southMarker: THREE.Object3D;
   setInclinationRad: (rad: number) => void;
+  setRadius: (radius: number) => void;
 };
 
 export function makeNodes(radius = MOON_ORBIT_RADIUS): NodesBundle {
@@ -18,23 +19,26 @@ export function makeNodes(radius = MOON_ORBIT_RADIUS): NodesBundle {
   group.add(line);
 
   const northMarker = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 12, 8),
+    new THREE.SphereGeometry(0.12, 16, 12),
     new THREE.MeshBasicMaterial({ color: 0x8a3331 }),
   );
   const southMarker = new THREE.Mesh(
-    new THREE.SphereGeometry(0.08, 12, 8),
+    new THREE.SphereGeometry(0.12, 16, 12),
     new THREE.MeshBasicMaterial({ color: 0x8a3331 }),
   );
   group.add(northMarker, southMarker);
 
-  function updateForInclination(rad: number) {
+  let currentInclinationRad = 0;
+  let currentRadius = radius;
+
+  function updatePositions() {
     const eclipticNormal = new THREE.Vector3(0, 1, 0);
-    const lunarNormal = new THREE.Vector3(0, 1, 0).applyAxisAngle(new THREE.Vector3(1, 0, 0), rad);
+    const lunarNormal = new THREE.Vector3(0, 1, 0).applyAxisAngle(new THREE.Vector3(1, 0, 0), currentInclinationRad);
     const cross = new THREE.Vector3().crossVectors(eclipticNormal, lunarNormal);
     const dir = cross.lengthSq() < 1e-8 ? new THREE.Vector3(1, 0, 0) : cross.normalize();
 
-    const pA = dir.clone().multiplyScalar(radius);
-    const pB = dir.clone().multiplyScalar(-radius);
+    const pA = dir.clone().multiplyScalar(currentRadius);
+    const pB = dir.clone().multiplyScalar(-currentRadius);
 
     const pos = line.geometry.getAttribute("position") as THREE.BufferAttribute;
     pos.setXYZ(0, pA.x, pA.y, pA.z);
@@ -45,11 +49,25 @@ export function makeNodes(radius = MOON_ORBIT_RADIUS): NodesBundle {
     southMarker.position.copy(pB);
   }
 
+  function setInclinationRad(rad: number) {
+    currentInclinationRad = rad;
+    updatePositions();
+  }
+
+  function setRadius(newRadius: number) {
+    currentRadius = newRadius;
+    updatePositions();
+  }
+
+  // Initialize positions
+  setInclinationRad(0);
+
   return {
     group,
     northMarker,
     southMarker,
-    setInclinationRad: updateForInclination,
+    setInclinationRad,
+    setRadius,
   };
 }
 
