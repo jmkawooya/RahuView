@@ -230,24 +230,73 @@ export function generatePlanetTexture(options: PlanetTextureOptions = {}) {
 }
 
 export function generateSunEmissive(options: { width?: number; height?: number; seed?: number } = {}) {
-  const width = options.width ?? 256;
-  const height = options.height ?? 128;
-  const rand = seededRandom(options.seed ?? 4242);
+  const width = options.width ?? 2048;
+  const height = options.height ?? 1024;
+  const seed = options.seed ?? 4242;
   const data = new Uint8Array(width * height * 4);
 
-  // Stable wave parameters for consistent texture
-  const p1 = makeNoiseParams(rand, [1.8, 2.2, 1.5, 2.0, 2.0, 2.5]);
-  const p2 = makeNoiseParams(rand, [2.5, 3.0, 2.2, 2.8, 2.4, 3.1]);
+  // Helper: anisotropic fractal Brownian motion using periodic value noise
+  function fbmAniso(u: number, v: number, octaves: number, baseFreqX: number, baseFreqY: number, lacunarity: number, gain: number, s: number) {
+    let sum = 0;
+    let amp = 0.5;
+    let fx = baseFreqX;
+    let fy = baseFreqY;
+    for (let i = 0; i < octaves; i++) {
+      sum += amp * valueNoisePeriodic(u, v, fx, fy, s + i * 97);
+      fx *= lacunarity;
+      fy *= lacunarity;
+      amp *= gain;
+    }
+    return sum;
+  }
+
+  // Domain warp based on two fbm channels for flowing filaments
+  function warp(u: number, v: number, amount: number, s: number) {
+    const wx = fbmAniso(u + 11.1, v - 7.3, 5, 2.2, 2.2, 2.03, 0.55, s + 13) - 0.5;
+    const wy = fbmAniso(u - 5.7, v + 3.9, 5, 2.2, 2.2, 2.03, 0.55, s + 37) - 0.5;
+    return { u: u + amount * wx, v: v + amount * wy };
+  }
+
+  // Large scale latitude elongation to hint at solar differential rotation
+  function latStretch(latNorm: number) {
+    // latNorm: 0..1 where 0.5 is equator
+    const fromEquator = Math.abs(latNorm - 0.5); // 0 at equator, 0.5 at poles
+    return 1.0 - 0.5 * (1.0 - Math.cos(fromEquator * Math.PI)); // 1.0 at equator, ~0.5 near poles
+  }
 
   for (let y = 0; y < height; y++) {
     const v = y / (height - 1);
     const lat = (v - 0.5) * Math.PI;
+    const stretch = latStretch(v);
     for (let x = 0; x < width; x++) {
       const u = x / (width - 1);
-      const lon = (u - 0.5) * Math.PI * 2.0;
-      let val = multiSine(lat * 2.3, lon * 2.7, p1) * 0.6 + multiSine(lat * 3.7, lon * 3.1, p2) * 0.4;
-      val = clamp01(Math.pow(val, 1.6));
-      const color = new THREE.Color(1.0, 0.78 + 0.22 * val, 0.2 + 0.7 * val);
+
+      // Start with domain-warped coordinates for flow-like filaments
+      const w1 = warp(u * 1.0, v * 1.0, 0.08, seed + 101);
+      const w2 = warp(w1.u * 1.7 + 0.13, w1.v * 1.7 - 0.07, 0.04, seed + 211);
+
+      // Macro convection cells (low frequency)
+      const macro = fbmAniso(w2.u * 0.6, w2.v * 0.6, 4, 3.0 * stretch, 1.8, 2.01, 0.52, seed + 1);
+
+      // Filamentary ridges (medium frequency, anisotropic along longitude)
+      const filaments = ridgedFbm(w2.u * 2.6, w2.v * 1.2, 5, 3.2, 2.05, 0.55, seed + 2);
+
+      // Fine granulation
+      const granules = fbmAniso(w2.u * 6.0, w2.v * 6.0, 4, 6.0, 5.2, 2.02, 0.5, seed + 3);
+
+      // Combine layers with biases
+      let intensity = clamp01(macro * 0.55 + filaments * 0.35 + granules * 0.22);
+      intensity = Math.pow(intensity, 1.25);
+
+      // Slight limb darkening: fade towards poles mimicking depth falloff
+      const limb = 0.85 + 0.15 * Math.cos(lat);
+      intensity *= limb;
+
+      // Color ramp between deep orange and near-white yellow
+      const hot = new THREE.Color(1.0, 0.97, 0.82);
+      const warm = new THREE.Color(1.0, 0.68, 0.12);
+      const color = warm.clone().lerp(hot, intensity);
+
       const idx = (y * width + x) * 4;
       data[idx + 0] = Math.round(clamp01(color.r) * 255);
       data[idx + 1] = Math.round(clamp01(color.g) * 255);
@@ -264,7 +313,7 @@ export function generateSunEmissive(options: { width?: number; height?: number; 
   map.generateMipmaps = true;
   map.minFilter = THREE.LinearMipMapLinearFilter;
   map.magFilter = THREE.LinearFilter;
-  map.anisotropy = 4;
+  map.anisotropy = 8;
   return map;
 }
 

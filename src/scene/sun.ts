@@ -19,9 +19,9 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   const orbitGroup = new THREE.Group();
   root.add(orbitGroup);
 
-  const sunGeo = new THREE.SphereGeometry(SUN_RADIUS, 64, 48);
+  const sunGeo = new THREE.SphereGeometry(SUN_RADIUS, 96, 72);
   // Use unlit material so the Sun is self-illuminated regardless of lights
-  const sunTexture = generateSunEmissive({ width: 1024, height: 512 });
+  const sunTexture = generateSunEmissive({ width: 4096, height: 2048 });
   const sunMat = new THREE.MeshBasicMaterial({
     map: sunTexture,
     color: 0xffffff,

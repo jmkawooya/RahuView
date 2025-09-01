@@ -121,6 +121,9 @@ function computeAndRender() {
   // Get sun position for eclipse calculations
   const sunPos = new THREE.Vector3();
   sunSys.sunMesh.getWorldPosition(sunPos);
+  // Camera world position for visibility/overlap checks
+  const cameraPos = new THREE.Vector3();
+  camera.getWorldPosition(cameraPos);
 
   // Visibilities from state
   planes.ecliptic.visible = s.showEcliptic;
@@ -204,6 +207,43 @@ function computeAndRender() {
   });
 
   const anyEclipse = solarEclipse || lunarEclipse;
+
+  // Hide node markers when they visually overlap the Sun from the camera's viewpoint
+  (function updateNodeMarkerVisibility(){
+    const north = nodes.northMarker as THREE.Object3D;
+    const south = nodes.southMarker as THREE.Object3D;
+
+    const northPos = new THREE.Vector3();
+    const southPos = new THREE.Vector3();
+    north.getWorldPosition(northPos);
+    south.getWorldPosition(southPos);
+
+    const toSun = new THREE.Vector3().subVectors(sunPos, cameraPos);
+    const sunDistance = toSun.length();
+    if (sunDistance < 1e-6) {
+      north.visible = true;
+      south.visible = true;
+      return;
+    }
+    toSun.normalize();
+
+    const sunApparentRadius = Math.atan(getState().sunRadius / sunDistance);
+    const markerRadius = 0.12; // geometry radius defined in nodes.ts
+
+    function overlapsSun(markerPos: THREE.Vector3): boolean {
+      const toMarker = new THREE.Vector3().subVectors(markerPos, cameraPos);
+      const markerDistance = toMarker.length();
+      if (markerDistance < 1e-6) return false;
+      const markerApparentRadius = Math.atan(markerRadius / markerDistance);
+      toMarker.normalize();
+      const separation = Math.acos(THREE.MathUtils.clamp(toSun.dot(toMarker), -1, 1));
+      // Slight padding to avoid flicker at the edge
+      return separation <= (sunApparentRadius + markerApparentRadius * 1.1);
+    }
+
+    north.visible = !overlapsSun(northPos);
+    south.visible = !overlapsSun(southPos);
+  })();
 
   // Let Three.js handle shadows naturally based on Sun's light position
   // Both Earth and Moon always cast and receive shadows as configured
