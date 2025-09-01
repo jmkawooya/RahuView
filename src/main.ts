@@ -13,7 +13,7 @@ import { SIDEREAL_MONTH_DAYS, SIDEREAL_YEAR_DAYS, NODAL_REGRESSION_DAYS, TWO_PI 
 const canvasWrap = document.getElementById("canvas-wrap");
 if (!canvasWrap) throw new Error("Missing #canvas-wrap container");
 
-const { scene, renderer, camera, controls, onResize } = initScene(canvasWrap);
+const { scene, renderer, camera, controls, onResize, starfield } = initScene(canvasWrap);
 
 // Planes and nodes
 const planes = makePlanes();
@@ -64,6 +64,7 @@ initDomControls(
 
 const clock = new THREE.Clock();
 let elapsedDays = 0; // simulation clock in days
+let elapsedSecondsTotal = 0;
 
 // Track renderer dimensions to avoid unnecessary resize calls
 let lastRendererWidth = renderer.domElement.clientWidth;
@@ -86,6 +87,7 @@ const highlightNodeColor = new THREE.Color(0xf8b933);
 
 function computeAndRender() {
   const deltaSeconds = clock.getDelta();
+  elapsedSecondsTotal += deltaSeconds;
   const s = getState();
   
   // Update elapsed time if playing
@@ -233,6 +235,17 @@ function computeAndRender() {
     lastRendererHeight = currentHeight;
   }
   
+  // Animate background starfield twinkling
+  starfield.update(elapsedSecondsTotal);
+
+  // Subtle Sun emissive pulsing
+  sunSys.update(elapsedSecondsTotal);
+
+  // Gently rotate clouds layer if present
+  if ((earthSys as any).clouds) {
+    (earthSys as any).clouds.rotation.y += deltaSeconds * 0.02;
+  }
+
   labels.renderer.render(scene, camera);
   // Update zoom debug readout (camera distance to target) only when Debug is enabled
   if (zoomOverlay) {

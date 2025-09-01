@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { PCFSoftShadowMap } from "three";
 import { makeCamera, makeControls } from "./camera";
-import { makeStarfield } from "./starfield";
+import { makeStarfield, type Starfield } from "./starfield";
 
 export type SceneBundle = {
   scene: THREE.Scene;
@@ -9,6 +9,7 @@ export type SceneBundle = {
   camera: THREE.PerspectiveCamera;
   controls: import("three/examples/jsm/controls/OrbitControls.js").OrbitControls;
   onResize: (callback: () => void) => void;
+  starfield: Starfield;
 };
 
 export function initScene(container: HTMLElement): SceneBundle {
@@ -50,7 +51,8 @@ export function initScene(container: HTMLElement): SceneBundle {
   onResize();
 
   // Scene content
-  scene.add(makeStarfield());
+  const starfield = makeStarfield();
+  scene.add(starfield.points);
   // Earth will be added separately in main.ts as part of EarthSystem
 
   return { 
@@ -58,6 +60,7 @@ export function initScene(container: HTMLElement): SceneBundle {
     renderer, 
     camera, 
     controls,
+    starfield,
     onResize: (callback: () => void) => {
       resizeCallbacks.push(callback);
     }

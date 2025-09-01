@@ -10,7 +10,6 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   const panelToggle = document.getElementById("panel-toggle") as HTMLButtonElement | null;
   const inc = document.getElementById("inc") as HTMLInputElement | null;
   const speed = document.getElementById("speed") as HTMLInputElement | null;
-  const scrub = document.getElementById("scrub") as HTMLInputElement | null;
   const play = document.getElementById("play") as HTMLButtonElement | null;
   const pause = document.getElementById("pause") as HTMLButtonElement | null;
 
@@ -36,7 +35,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   const s = getState();
   if (inc) inc.value = String(s.inclinationDeg);
   if (speed) speed.value = String(s.speedMultiplier * 50);
-  if (scrub) scrub.value = "0";
+  
   
   // Initialize position controls
   if (sunAngle) sunAngle.value = String(s.sunAngle);
@@ -100,14 +99,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
     });
   }
 
-  if (scrub) {
-    scrub.addEventListener("input", () => {
-      const norm = Number(scrub.value); // 0..1
-      setPlay(false);
-      actions.set("time", norm);
-      updateDebugIfEnabled();
-    });
-  }
+  
 
   // Position control event listeners
   if (sunAngle) {
@@ -148,14 +140,14 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
     // Update debug value spans with current values
     const incValue = document.getElementById('incValue');
     const speedValue = document.getElementById('speedValue');
-    const scrubValue = document.getElementById('scrubValue');
+    
     const sunAngleValue = document.getElementById('sunAngleValue');
     const moonAngleValue = document.getElementById('moonAngleValue');
     const nodalRegressionValue = document.getElementById('nodalRegressionValue');
 
     if (incValue) incValue.textContent = `(${state.inclinationDeg.toFixed(1)})`;
     if (speedValue) speedValue.textContent = `(${(state.speedMultiplier * 50).toFixed(0)})`;
-    if (scrubValue && scrub) scrubValue.textContent = `(${Number(scrub.value).toFixed(3)})`;
+    
     const sunDeg = (state.sunAngle * 360) % 360;
     const moonDeg = (state.moonAngle * 360) % 360;
     const nodeDeg = (state.nodalRegression * 360) % 360;
