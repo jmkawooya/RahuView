@@ -82,6 +82,12 @@ p,li,label{font-family:var(--font-serif);}
   align-items:flex-start;
   gap:16px;
 }
+.header-overlay .logo-container,
+.header-overlay .logo-container a,
+.header-overlay .logo{
+  pointer-events:auto;
+  cursor:pointer;
+}
 .header-text{
   position:absolute;
   top:78px;
