@@ -53,3 +53,4 @@ coverage/
 # Temporary folders
 tmp/
 temp/
+.vite/
