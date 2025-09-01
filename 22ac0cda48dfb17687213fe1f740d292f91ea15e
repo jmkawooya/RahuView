@@ -1,0 +1,38 @@
+Detailed Changes:
+
+Major enhancements to the 3D astronomy visualization:
+
+🌍 Earth (earth.ts): +114 lines
+- Enhanced Earth rendering with improved materials and textures
+- Added realistic atmospheric effects and surface details
+
+⭐ Starfield (starfield.ts): +116 lines
+- Completely revamped star rendering system
+- Improved star generation and distribution algorithms
+
+☀️ Sun (sun.ts): +62 lines
+- Enhanced solar rendering with better lighting effects
+- Improved sun corona and surface texture rendering
+
+🛠️ NEW: Procedural Textures (proceduralTextures.ts): +271 lines
+- Brand new utility for generating procedural textures
+- Advanced algorithms for realistic celestial body surfaces
+
+📱 Main App (main.ts): +15 lines
+- Updated initialization and rendering pipeline
+- Better integration with new scene components
+
+🎛️ UI Controls (domControls.ts): Refactored (-12 lines)
+- Streamlined control interface
+- Removed redundant code and improved efficiency
+
+🏗️ Scene Init (initScene.ts): +7 lines
+- Updated scene initialization for new components
+
+🌙 Moon (moon.ts): Minor updates
+- Small adjustments for compatibility
+
+📄 HTML (index.html): UI updates
+- Updated interface elements and styling
+
+Total: 567 additions, 40 deletions across 9 files
