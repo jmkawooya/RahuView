@@ -127,7 +127,8 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
       const sNow = getState();
       const sun = sNow.sunAngle;
       const nodalReg = wrap01(sun + 0.25); // nodes 90° from Sun
-      const moonAng = wrap01(0.25 - sun); // Moon between Sun and Earth
+      // Align Moon with Sun while 90° from nodes: n + m = 0.25 - sun  => m = -2*sun
+      const moonAng = wrap01(-2 * sun);
       applyPreset(nodalReg, moonAng);
     });
   }
@@ -137,7 +138,8 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
       const sNow = getState();
       const sun = sNow.sunAngle;
       const nodalReg = wrap01(sun + 0.25); // nodes 90° from Sun
-      const moonAng = wrap01(0.75 - sun); // Moon opposite Sun
+      // Opposite Sun while 90° from nodes: n + m = 0.75 - sun => m = 0.5 - 2*sun
+      const moonAng = wrap01(0.5 - 2 * sun);
       applyPreset(nodalReg, moonAng);
     });
   }
