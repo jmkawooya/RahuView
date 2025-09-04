@@ -81,6 +81,67 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
     if (pause) pause.setAttribute("aria-pressed", String(!p));
   }
 
+  // Preset helpers
+  function wrap01(v: number) {
+    return ((v % 1) + 1) % 1;
+  }
+
+  const presetSolar = document.getElementById("presetSolar") as HTMLButtonElement | null;
+  const presetLunar = document.getElementById("presetLunar") as HTMLButtonElement | null;
+  const presetNewMoon = document.getElementById("presetNewMoon") as HTMLButtonElement | null;
+  const presetFullMoon = document.getElementById("presetFullMoon") as HTMLButtonElement | null;
+
+  function applyPreset(nodalReg: number, moonAng: number) {
+    setPlay(false);
+    // Update state
+    actions.set("nodalRegression", nodalReg);
+    actions.set("moonAngle", moonAng);
+    // Reflect in UI controls
+    if (nodalRegression) nodalRegression.value = String(nodalReg);
+    if (moonAngle) moonAngle.value = String(moonAng);
+    updateDebugIfEnabled();
+  }
+
+  if (presetSolar) {
+    presetSolar.addEventListener("click", () => {
+      const sNow = getState();
+      const sun = sNow.sunAngle; // 0..1
+      const nodalReg = wrap01(sun); // align nodes to Sun direction
+      const moonAng = wrap01(0.25 - sun); // place Moon on node toward Sun (between Sun and Earth)
+      applyPreset(nodalReg, moonAng);
+    });
+  }
+
+  if (presetLunar) {
+    presetLunar.addEventListener("click", () => {
+      const sNow = getState();
+      const sun = sNow.sunAngle;
+      const nodalReg = wrap01(sun); // align nodes to Sun direction
+      const moonAng = wrap01(0.75 - sun); // place Moon opposite Sun on far node
+      applyPreset(nodalReg, moonAng);
+    });
+  }
+
+  if (presetNewMoon) {
+    presetNewMoon.addEventListener("click", () => {
+      const sNow = getState();
+      const sun = sNow.sunAngle;
+      const nodalReg = wrap01(sun + 0.25); // nodes 90° from Sun
+      const moonAng = wrap01(0.25 - sun); // Moon between Sun and Earth
+      applyPreset(nodalReg, moonAng);
+    });
+  }
+
+  if (presetFullMoon) {
+    presetFullMoon.addEventListener("click", () => {
+      const sNow = getState();
+      const sun = sNow.sunAngle;
+      const nodalReg = wrap01(sun + 0.25); // nodes 90° from Sun
+      const moonAng = wrap01(0.75 - sun); // Moon opposite Sun
+      applyPreset(nodalReg, moonAng);
+    });
+  }
+
   if (inc) {
     inc.addEventListener("input", () => {
       const next = Number(inc.value);

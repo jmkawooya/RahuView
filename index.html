@@ -21,7 +21,7 @@
       <header class="header-overlay">
         <div class="logo-container">
           <a href="https://artofthezodiac.co/" target="_blank" rel="noopener noreferrer" aria-label="Visit Art of the Zodiac">
-            <img src="%BASE_URL%Logocv-1024x227-white.png" alt="Art of the Zodiac" class="logo">
+            <img src="./Logocv-1024x227-white.png" alt="Art of the Zodiac" class="logo">
           </a>
         </div>
                          <div class="header-text">
@@ -32,6 +32,17 @@
       <!-- UI Controls Overlay -->
       <aside class="panel ui controls-overlay" id="ui-panel">
         <form class="controls small-ui" id="controls" aria-label="Simulation controls">
+          <fieldset>
+            <legend>Presets</legend>
+            <div class="row gap">
+              <button id="presetSolar" type="button">Solar Eclipse</button>
+              <button id="presetLunar" type="button">Lunar Eclipse</button>
+            </div>
+            <div class="row gap">
+              <button id="presetNewMoon" type="button">New Moon</button>
+              <button id="presetFullMoon" type="button">Full Moon</button>
+            </div>
+          </fieldset>
           <fieldset>
             <legend>Motion</legend>
             <label for="inc">Inclination (deg) <span id="incValue" class="debug-value" style="display:none;"></span></label>
