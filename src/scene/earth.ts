@@ -79,8 +79,7 @@ export function makeEarth(): EarthSystem {
   function setRadius(radius: number) {
     const scale = radius / EARTH_RADIUS;
     earth.scale.setScalar(scale);
-    atmosphere.scale.setScalar(scale);
-    clouds.scale.setScalar(scale);
+    // atmosphere and clouds are children of earth, so they inherit the scaling automatically
   }
 
   return { earth, clouds, atmosphere, setRadius };

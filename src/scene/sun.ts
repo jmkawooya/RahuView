@@ -7,6 +7,7 @@ export type SunSystem = {
   orbitGroup: THREE.Group;
   sunMesh: THREE.Mesh;
   light: THREE.DirectionalLight;
+  halo: THREE.Mesh;
   setAngleRad: (theta: number) => void;
   setVisible: (v: boolean) => void;
   setRadius: (radius: number) => void;
@@ -18,6 +19,9 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   const root = new THREE.Group();
   const orbitGroup = new THREE.Group();
   root.add(orbitGroup);
+
+  let currentSunRadius = SUN_RADIUS;
+  let currentOrbitRadius = orbitRadius;
 
   const sunGeo = new THREE.SphereGeometry(SUN_RADIUS, 96, 72);
   // Use unlit material so the Sun is self-illuminated regardless of lights
@@ -46,20 +50,151 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   light.target.position.set(0, 0, 0);
   root.add(light.target);
 
-  // Add a simple glow sprite (billboard) for halo
-  const glowTexture = createRadialGlowTexture();
-  const glowMat = new THREE.SpriteMaterial({
-    map: glowTexture,
-    color: 0xffe6a6,
+  // Add a shader-based volumetric halo (sphere shell with additive scattering)
+  const baseHaloRadius = SUN_RADIUS * 3.0; // geometry base, we will rescale to desired outer radius
+  const haloGeo = new THREE.SphereGeometry(baseHaloRadius, 48, 32);
+  const haloMat = new THREE.ShaderMaterial({
     transparent: true,
     depthWrite: false,
+    depthTest: true,
     blending: THREE.AdditiveBlending,
+    side: THREE.DoubleSide,
+    uniforms: {
+      uColor: { value: new THREE.Color(0xffe6a6) },
+      uIntensity: { value: 1.15 },
+      uRimPower: { value: 3.0 },
+      uNoiseAmp: { value: 1.0 / 255.0 },
+      uTime: { value: 0.0 },
+      uInnerRadius: { value: SUN_RADIUS },
+      uOuterRadius: { value: SUN_ORBIT_RADIUS * 0.98 },
+      uSunCenter: { value: new THREE.Vector3() },
+      uSteps: { value: 24 },
+      uDensity: { value: 1.0 },
+    },
+    vertexShader: /* glsl */`
+      varying vec3 vWorldPos;
+      varying vec3 vNormalW;
+      varying vec3 vPos;
+      varying vec3 vWorldCenter;
+      void main(){
+        vPos = position;
+        vWorldPos = (modelMatrix * vec4(position, 1.0)).xyz;
+        vNormalW = normalize(mat3(modelMatrix) * normal);
+        vWorldCenter = (modelMatrix * vec4(0.0, 0.0, 0.0, 1.0)).xyz;
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: /* glsl */`
+      uniform vec3 uColor;
+      uniform float uIntensity;
+      uniform float uRimPower;
+      uniform float uNoiseAmp;
+      uniform float uTime;
+      uniform float uInnerRadius;
+      uniform float uOuterRadius;
+      uniform vec3 uSunCenter;
+      uniform int uSteps;
+      uniform float uDensity;
+      varying vec3 vWorldPos;
+      varying vec3 vNormalW;
+      varying vec3 vPos;
+      varying vec3 vWorldCenter;
+
+      // Simple hash-based noise for dithering
+      float hash(vec2 p){
+        p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
+        return fract(sin(p.x + p.y + uTime * 37.0) * 43758.5453);
+      }
+
+      void main(){
+        // Ray from camera through this pixel
+        vec3 ro = cameraPosition;
+        vec3 rd = normalize(vWorldPos - cameraPosition);
+
+        // Sphere center (world)
+        vec3 C = vWorldCenter; // equals halo's world origin
+        float R = uOuterRadius;
+        float r0 = uInnerRadius;
+
+        // Intersect with outer sphere
+        vec3 oc = ro - C;
+        float b = dot(oc, rd);
+        float c = dot(oc, oc) - R * R;
+        float h = b*b - c;
+        if (h <= 0.0) {
+          // When inside the outer sphere, still accumulate outward segment
+          float distToCenter = length(oc);
+          if (distToCenter < R) {
+            float tOutOnly = -b + sqrt(max(0.0, h));
+            float tInOnly = 0.0;
+            float segmentOnly = max(0.0, tOutOnly - tInOnly);
+            if (segmentOnly <= 1e-5) discard;
+          } else {
+            discard;
+          }
+        }
+        float sqrtH = sqrt(h);
+        float tIn = -b - sqrtH;
+        float tOut = -b + sqrtH;
+        tIn = max(tIn, 0.0);
+
+        // Clip out the solid Sun (inner sphere)
+        float c2 = dot(oc, oc) - r0 * r0;
+        float h2 = b*b - c2;
+        float tInnerExit = -1.0;
+        if (h2 > 0.0){
+          float sh2 = sqrt(h2);
+          float tInnerIn = -b - sh2;
+          tInnerExit = -b + sh2;
+          tIn = max(tIn, tInnerExit);
+        }
+        float segmentLen = max(0.0, tOut - tIn);
+        if (segmentLen <= 1e-5) discard;
+
+        int steps = max(8, uSteps);
+        float dt = segmentLen / float(steps);
+        float accum = 0.0;
+        float tCur = tIn + dt * 0.5;
+        for (int i = 0; i < 128; i++) {
+          if (i >= steps) break;
+          vec3 p = ro + rd * tCur;
+          float dist = length(p - C);
+          // Emissive density higher near inner surface and decays outward
+          float x = clamp((dist - r0) / max(1e-4, (R - r0)), 0.0, 1.0);
+          float density = pow(1.0 - x, 2.5) * (r0*r0) / max(1e-4, dist*dist);
+          accum += density * dt;
+          tCur += dt;
+        }
+
+        // Rim boost gives stronger brightness near tangent views
+        vec3 viewDir = normalize(cameraPosition - vWorldPos);
+        float rim = pow(1.0 - max(dot(viewDir, normalize(vNormalW)), 0.0), uRimPower);
+
+        float intensity = uIntensity * accum * (0.4 + 0.6 * rim) * uDensity;
+        // Dither to avoid banding
+        float dither = (hash(gl_FragCoord.xy) - 0.5) * uNoiseAmp;
+        intensity = max(0.0, intensity + dither);
+        gl_FragColor = vec4(uColor * intensity, intensity);
+      }
+    `,
   });
-  const glow = new THREE.Sprite(glowMat);
-  let glowScale = SUN_RADIUS * 8.0; // halo diameter
-  glow.scale.set(glowScale, glowScale, 1);
-  glow.position.copy(sunMesh.position);
-  orbitGroup.add(glow);
+  const halo = new THREE.Mesh(haloGeo, haloMat);
+  halo.position.copy(sunMesh.position);
+  halo.renderOrder = 1; // draw after opaque sun
+  orbitGroup.add(halo);
+
+  function updateHaloSizing() {
+    const desiredOuter = Math.max(currentSunRadius * 3.0, currentOrbitRadius * 0.98);
+    const scaleForOuter = desiredOuter / baseHaloRadius;
+    halo.scale.setScalar(scaleForOuter);
+    const mat = halo.material as THREE.ShaderMaterial;
+    mat.uniforms.uInnerRadius.value = currentSunRadius;
+    mat.uniforms.uOuterRadius.value = desiredOuter;
+    mat.uniforms.uSunCenter.value.copy(halo.position);
+    // Slightly boost intensity when halo is large so it remains visible
+    mat.uniforms.uIntensity.value = THREE.MathUtils.lerp(1.0, 1.35, THREE.MathUtils.clamp((desiredOuter - currentSunRadius * 3.0) / Math.max(1e-4, currentOrbitRadius), 0, 1));
+  }
+  updateHaloSizing();
 
   function setAngleRad(theta: number) {
     orbitGroup.rotation.y = theta;
@@ -72,17 +207,16 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
   function setRadius(radius: number) {
     const scale = radius / SUN_RADIUS;
     sunMesh.scale.setScalar(scale);
-    // Scale glow proportionally and modulate opacity for intensity perception
-    glowScale = (SUN_RADIUS * 8.0) * scale;
-    glow.scale.set(glowScale, glowScale, 1);
-    const spriteMat = glow.material as THREE.SpriteMaterial;
-    spriteMat.opacity = 0.6 + 0.3 * Math.min(1, scale);
+    currentSunRadius = radius;
+    updateHaloSizing();
   }
 
   function setOrbitRadius(radius: number) {
     sunMesh.position.set(radius, 0, 0);
     light.position.set(radius, 0, 0);
-    glow.position.set(radius, 0, 0);
+    halo.position.set(radius, 0, 0);
+    currentOrbitRadius = radius;
+    updateHaloSizing();
     // Expand shadow camera if needed (simple heuristic)
     const ortho = light.shadow.camera as THREE.OrthographicCamera;
     const half = Math.max(40, radius * 1.2);
@@ -96,26 +230,14 @@ export function makeSunSystem(orbitRadius = SUN_ORBIT_RADIUS): SunSystem {
     const brightness = 1.2 + pulse * 0.8;
     (sunMat.color as THREE.Color).setRGB(1.0, 1.0, 1.0).multiplyScalar(brightness);
     sunMesh.rotation.y = elapsedSeconds * 0.03;
+    // Drive subtle temporal dithering/noise in halo
+    const mat = halo.material as THREE.ShaderMaterial;
+    mat.uniforms.uTime.value = elapsedSeconds;
+    // Slight pulsation of density for life-like variation
+    mat.uniforms.uDensity.value = 0.9 + 0.2 * Math.sin(elapsedSeconds * 0.3);
   }
 
-  function createRadialGlowTexture() {
-    const size = 256;
-    const canvas = document.createElement('canvas');
-    canvas.width = size;
-    canvas.height = size;
-    const ctx = canvas.getContext('2d')!;
-    const grd = ctx.createRadialGradient(size/2, size/2, size*0.15, size/2, size/2, size*0.5);
-    grd.addColorStop(0, 'rgba(255, 230, 180, 0.9)');
-    grd.addColorStop(0.4, 'rgba(255, 200, 120, 0.35)');
-    grd.addColorStop(1, 'rgba(255, 200, 120, 0.0)');
-    ctx.fillStyle = grd;
-    ctx.fillRect(0, 0, size, size);
-    const texture = new THREE.CanvasTexture(canvas);
-    texture.colorSpace = THREE.SRGBColorSpace;
-    return texture;
-  }
-
-  return { root, orbitGroup, sunMesh, light, setAngleRad, setVisible, setRadius, setOrbitRadius, update };
+  return { root, orbitGroup, sunMesh, light, halo, setAngleRad, setVisible, setRadius, setOrbitRadius, update };
 }
 
 
