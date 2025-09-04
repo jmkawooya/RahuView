@@ -180,31 +180,29 @@ function computeAndRender() {
     ];
   }
 
-  // Solar eclipse: any point on Earth's sunward hemisphere sees Moon overlap Sun
-  const earthToSunDir = sunPos.clone().sub(earthPos).normalize();
-  const earthSamples = sampleSurfacePoints(earthPos, earthToSunDir, getState().earthRadius);
-  const solarEclipse = earthSamples.some((p) => {
-    // Must be on sunward side (allow limb):
-    const onSunward = p.clone().sub(earthPos).dot(earthToSunDir) >= -1e-6;
-    if (!onSunward) return false;
-    // Moon must be closer than Sun from this point
-    const dSun = sunPos.clone().sub(p).length();
-    const dMoon = moonPos.clone().sub(p).length();
-    if (dMoon >= dSun) return false;
-    return disksOverlapAtObserver(p, sunPos, getState().sunRadius, moonPos, getState().moonRadius);
-  });
+  // Eclipse detection aligned to directional-light shadows:
+  // Treat Sun light as parallel rays along L. A shadow appears if the occluder's
+  // shadow cylinder intersects the target sphere.
+  const L = sunPos.clone().sub(earthPos).normalize(); // light direction from Earth to Sun
+  const earthToMoon = moonPos.clone().sub(earthPos);
+  const earthRadius = getState().earthRadius;
+  const moonRadius = getState().moonRadius;
+  const dES = sunPos.distanceTo(earthPos);
+  const dMS = sunPos.distanceTo(moonPos);
+  const dEM = earthPos.distanceTo(moonPos);
+  const margin = 0.99; // require slight interior intersection to avoid premature triggers
 
-  // Lunar eclipse: any point on Moon's sunward hemisphere sees Earth overlap Sun
-  const moonToSunDir = sunPos.clone().sub(moonPos).normalize();
-  const moonSamples = sampleSurfacePoints(moonPos, moonToSunDir, getState().moonRadius);
-  const lunarEclipse = moonSamples.some((p) => {
-    const onSunward = p.clone().sub(moonPos).dot(moonToSunDir) >= -1e-6;
-    if (!onSunward) return false;
-    const dSun = sunPos.clone().sub(p).length();
-    const dEarth = earthPos.clone().sub(p).length();
-    if (dEarth >= dSun) return false;
-    return disksOverlapAtObserver(p, sunPos, getState().sunRadius, earthPos, getState().earthRadius);
-  });
+  // Solar: Moon casts cylinder shadow of radius ~moonRadius along -L
+  // Conditions: Moon between Sun and Earth, and Earth intersects that cylinder
+  const dSolar = earthPos.clone().sub(moonPos).cross(L).length();
+  const moonOnSunwardSide = earthToMoon.dot(L) > 0 && dEM < dES; // Moon closer to Sun than Earth is
+  const solarEclipse = moonOnSunwardSide && dSolar <= (earthRadius + moonRadius) * margin;
+
+  // Lunar: Earth casts cylinder shadow of radius ~earthRadius along -L
+  // Conditions: Earth between Sun and Moon, and Moon intersects that cylinder
+  const dLunar = earthToMoon.cross(L).length();
+  const moonOnNightside = earthToMoon.dot(L) < 0 && dES < dMS; // Earth closer to Sun than Moon is
+  const lunarEclipse = moonOnNightside && dLunar <= (earthRadius + moonRadius) * margin;
 
   const anyEclipse = solarEclipse || lunarEclipse;
 
@@ -314,7 +312,6 @@ subscribe(() => {
   nodes.setInclinationRad(THREE.MathUtils.degToRad(s.inclinationDeg));
   
   // Live updates for scale and distances
-  earthSys.earth.scale.setScalar(s.earthRadius / 1); // base scaling relative to initial
   earthSys.setRadius?.(s.earthRadius);
   moonSys.setRadius(s.moonRadius);
   moonSys.setOrbitRadius(s.moonOrbitRadius);
