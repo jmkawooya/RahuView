@@ -1,4 +1,5 @@
 import { actions, boolActions, getState } from "./state";
+import { startAngleTweens } from "./tween";
 
 export function initDomControls(renderer: { setShadows: (enabled: boolean) => void }, toggles: {
   ecliptic: { setVisible: (v: boolean) => void };
@@ -31,6 +32,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   const showEclipse = document.getElementById("showEclipse") as HTMLInputElement | null;
   const showFills = document.getElementById("showFills") as HTMLInputElement | null;
   const showDebug = document.getElementById("showDebug") as HTMLInputElement | null;
+  const showPointer = document.getElementById("showPointer") as HTMLInputElement | null;
 
   const s = getState();
   if (inc) inc.value = String(s.inclinationDeg);
@@ -55,6 +57,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
   if (showEclipse) showEclipse.checked = s.showEclipse;
   if (showFills) showFills.checked = s.showFills;
   if (showDebug) showDebug.checked = s.showDebug;
+  if (showPointer) showPointer.checked = s.showPointer;
 
   // Controls panel visibility
   function applyPanelVisibility(show: boolean) {
@@ -93,10 +96,9 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
 
   function applyPreset(nodalReg: number, moonAng: number) {
     setPlay(false);
-    // Update state
-    actions.set("nodalRegression", nodalReg);
-    actions.set("moonAngle", moonAng);
-    // Reflect in UI controls
+    // Smoothly animate angles to new targets
+    startAngleTweens({ nodalRegression: nodalReg, moonAngle: moonAng }, 1.0);
+    // Reflect in UI controls immediately so sliders show target values
     if (nodalRegression) nodalRegression.value = String(nodalReg);
     if (moonAngle) moonAngle.value = String(moonAng);
     updateDebugIfEnabled();
@@ -286,6 +288,7 @@ export function initDomControls(renderer: { setShadows: (enabled: boolean) => vo
       actions.set("showEclipse", showEclipse.checked);
     });
   if (showFills) showFills.addEventListener("change", () => actions.set("showFills", showFills.checked));
+  if (showPointer) showPointer.addEventListener("change", () => actions.set("showPointer", showPointer.checked));
 
   // Initialize debug values display
   updateDebugValuesVisibility(s.showDebug);

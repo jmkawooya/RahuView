@@ -97,6 +97,7 @@
             <label><input id="showFills" type="checkbox" checked /> Fill Planes</label>
             <label><input id="showEclipse" type="checkbox" checked /> Eclipse Indicator</label>
             <label><input id="showDebug" type="checkbox" /> Debug Values</label>
+            <label><input id="showPointer" type="checkbox" checked /> Presenter Pointer</label>
           </fieldset>
         </form>
       </aside>
@@ -104,6 +105,7 @@
       <!-- Panel Toggle Button -->
       <button id="panel-toggle" class="panel-toggle" type="button" aria-controls="ui-panel" aria-expanded="true" aria-label="Hide controls" title="Hide controls">»</button>
       <div id="zoom-overlay" class="zoom-overlay" style="display:none;">Zoom: <span id="zoomValue"></span></div>
+      <canvas id="pointer-overlay" class="pointer-overlay" aria-hidden="true"></canvas>
       
 
     </div>

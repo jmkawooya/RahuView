@@ -32,6 +32,7 @@ export type AppState = {
   showFills: boolean;
   showDebug: boolean;
   showControlsPanel: boolean;
+  showPointer: boolean;
 };
 
 type Listener = () => void;
@@ -61,6 +62,7 @@ const state: AppState = {
   showFills: true,
   showDebug: false,
   showControlsPanel: true,
+  showPointer: true,
 };
 
 const listeners: Set<Listener> = new Set();
