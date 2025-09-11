@@ -8,6 +8,8 @@ import { makeSunSystem } from "./scene/sun";
 import { makeEarth } from "./scene/earth";
 import { initDomControls } from "./ui/domControls";
 import { actions, getState, subscribe } from "./ui/state";
+import { updateTweens } from "./ui/tween";
+import { createPointerOverlay } from "./ui/pointerOverlay";
 import { SIDEREAL_MONTH_DAYS, SIDEREAL_YEAR_DAYS, NODAL_REGRESSION_DAYS, TWO_PI } from "./utils/constants";
 
 const canvasWrap = document.getElementById("canvas-wrap");
@@ -33,6 +35,11 @@ labels.renderer.domElement.style.height = "100%";
 
 // Set initial size for labels renderer to match the main renderer
 labels.renderer.setSize(renderer.domElement.clientWidth, renderer.domElement.clientHeight);
+
+// Presenter pointer overlay (canvas-based glow/trail)
+const appRoot = document.getElementById("app") as HTMLElement;
+const pointer = createPointerOverlay(appRoot);
+pointer.setEnabled(getState().showPointer);
 
 // Earth system
 const earthSys = makeEarth();
@@ -77,6 +84,7 @@ onResize(() => {
   labels.renderer.setSize(currentWidth, currentHeight);
   lastRendererWidth = currentWidth;
   lastRendererHeight = currentHeight;
+  pointer.resize();
 });
 
 const eclipseIndicator = document.getElementById("eclipse-indicator") as HTMLDivElement | null;
@@ -88,6 +96,8 @@ const highlightNodeColor = new THREE.Color(0xf8b933);
 function computeAndRender() {
   const deltaSeconds = clock.getDelta();
   elapsedSecondsTotal += deltaSeconds;
+  // Update any in-flight tweens before reading state for this frame
+  updateTweens(deltaSeconds);
   const s = getState();
   
   // Update elapsed time if playing
@@ -140,19 +150,7 @@ function computeAndRender() {
   const earthPos = new THREE.Vector3();
   earthSys.earth.getWorldPosition(earthPos);
 
-  function disksOverlapAtObserver(observer: THREE.Vector3, aPos: THREE.Vector3, aRadius: number, bPos: THREE.Vector3, bRadius: number): boolean {
-    const toA = aPos.clone().sub(observer);
-    const toB = bPos.clone().sub(observer);
-    const dA = toA.length();
-    const dB = toB.length();
-    if (dA < 1e-6 || dB < 1e-6) return false;
-    const dirA = toA.clone().normalize();
-    const dirB = toB.clone().normalize();
-    const sep = Math.acos(THREE.MathUtils.clamp(dirA.dot(dirB), -1, 1));
-    const appA = Math.atan(aRadius / dA);
-    const appB = Math.atan(bRadius / dB);
-    return sep <= (appA + appB);
-  }
+  // removed disksOverlapAtObserver; detection is shadow-based only
 
   function makeTangentBasis(dir: THREE.Vector3) {
     const up = new THREE.Vector3(0, 1, 0);
@@ -163,48 +161,66 @@ function computeAndRender() {
   }
 
   function sampleSurfacePoints(center: THREE.Vector3, faceDir: THREE.Vector3, radius: number): THREE.Vector3[] {
-    const dir = faceDir.clone().normalize();
-    const { x, y } = makeTangentBasis(dir);
-    const r = radius;
-    const diag = 1 / Math.SQRT2;
-    return [
-      center.clone(),
-      center.clone().add(x.clone().multiplyScalar(r)),
-      center.clone().add(x.clone().multiplyScalar(-r)),
-      center.clone().add(y.clone().multiplyScalar(r)),
-      center.clone().add(y.clone().multiplyScalar(-r)),
-      center.clone().add(x.clone().add(y).multiplyScalar(r * diag)),
-      center.clone().add(x.clone().sub(y).multiplyScalar(r * diag)),
-      center.clone().add(x.clone().multiplyScalar(-1).add(y).multiplyScalar(r * diag)),
-      center.clone().add(x.clone().multiplyScalar(-1).sub(y).multiplyScalar(r * diag)),
-    ];
+    const Ldir = faceDir.clone().normalize();
+    const subSolarDir = Ldir.clone().negate();
+    const { x, y } = makeTangentBasis(Ldir);
+    const samples: THREE.Vector3[] = [];
+    // Center of the light-facing disc (subsolar point)
+    samples.push(center.clone().add(subSolarDir.clone().multiplyScalar(radius)));
+    // Multi-ring sampling over the light-facing hemisphere (0..90° from subsolar)
+    const ringFractions = [0.25, 0.5, 0.75, 1.0]; // as fraction of 90°
+    const ringSegments = [8, 12, 16, 20];
+    for (let rIdx = 0; rIdx < ringFractions.length; rIdx++) {
+      const alpha = ringFractions[rIdx] * (Math.PI * 0.5); // polar angle from subsolar
+      const ca = Math.cos(alpha);
+      const sa = Math.sin(alpha);
+      const segs = ringSegments[rIdx];
+      for (let k = 0; k < segs; k++) {
+        const phi = (k / segs) * Math.PI * 2;
+        const cp = Math.cos(phi);
+        const sp = Math.sin(phi);
+        const tangent = x.clone().multiplyScalar(cp).add(y.clone().multiplyScalar(sp));
+        const dir = subSolarDir.clone().multiplyScalar(ca).add(tangent.multiplyScalar(sa)).normalize();
+        samples.push(center.clone().add(dir.multiplyScalar(radius)));
+      }
+    }
+    return samples;
   }
 
-  // Solar eclipse: any point on Earth's sunward hemisphere sees Moon overlap Sun
-  const earthToSunDir = sunPos.clone().sub(earthPos).normalize();
-  const earthSamples = sampleSurfacePoints(earthPos, earthToSunDir, getState().earthRadius);
-  const solarEclipse = earthSamples.some((p) => {
-    // Must be on sunward side (allow limb):
-    const onSunward = p.clone().sub(earthPos).dot(earthToSunDir) >= -1e-6;
-    if (!onSunward) return false;
-    // Moon must be closer than Sun from this point
-    const dSun = sunPos.clone().sub(p).length();
-    const dMoon = moonPos.clone().sub(p).length();
-    if (dMoon >= dSun) return false;
-    return disksOverlapAtObserver(p, sunPos, getState().sunRadius, moonPos, getState().moonRadius);
-  });
+  // Eclipse detection based purely on rendered shadow geometry, using the
+  // actual directional light vector so triggers align with visible shadows.
+  const lightWorldPos = new THREE.Vector3();
+  const lightTargetWorldPos = new THREE.Vector3();
+  sunSys.light.getWorldPosition(lightWorldPos);
+  sunSys.light.target.getWorldPosition(lightTargetWorldPos);
+  const L = lightTargetWorldPos.clone().sub(lightWorldPos).normalize(); // light rays direction
 
-  // Lunar eclipse: any point on Moon's sunward hemisphere sees Earth overlap Sun
-  const moonToSunDir = sunPos.clone().sub(moonPos).normalize();
-  const moonSamples = sampleSurfacePoints(moonPos, moonToSunDir, getState().moonRadius);
-  const lunarEclipse = moonSamples.some((p) => {
-    const onSunward = p.clone().sub(moonPos).dot(moonToSunDir) >= -1e-6;
-    if (!onSunward) return false;
-    const dSun = sunPos.clone().sub(p).length();
-    const dEarth = earthPos.clone().sub(p).length();
-    if (dEarth >= dSun) return false;
-    return disksOverlapAtObserver(p, sunPos, getState().sunRadius, earthPos, getState().earthRadius);
-  });
+  const earthRadius = getState().earthRadius;
+  const moonRadius = getState().moonRadius;
+
+  function shadowIntersects(occluderCenter: THREE.Vector3, occluderRadius: number, targetCenter: THREE.Vector3, targetRadius: number): boolean {
+    // Quick upstream check to early reject
+    const deltaCenter = new THREE.Vector3().subVectors(targetCenter, occluderCenter);
+    if (deltaCenter.dot(L) <= 0) return false;
+    const dirToLight = L.clone().negate();
+    function rayHitsSphere(origin: THREE.Vector3): boolean {
+      const oc = origin.clone().sub(occluderCenter);
+      const b = oc.dot(dirToLight);
+      const c = oc.lengthSq() - occluderRadius * occluderRadius;
+      const h = b * b - c;
+      if (h < 0) return false;
+      const t = -b - Math.sqrt(h);
+      return t > 0;
+    }
+    const samples = sampleSurfacePoints(targetCenter, L, targetRadius);
+    for (let i = 0; i < samples.length; i++) {
+      if (rayHitsSphere(samples[i])) return true;
+    }
+    return false;
+  }
+
+  const solarEclipse = shadowIntersects(moonPos, moonRadius, earthPos, earthRadius);
+  const lunarEclipse = shadowIntersects(earthPos, earthRadius, moonPos, moonRadius);
 
   const anyEclipse = solarEclipse || lunarEclipse;
 
@@ -281,6 +297,9 @@ function computeAndRender() {
   // Subtle Sun emissive pulsing
   sunSys.update(elapsedSecondsTotal);
 
+  // Update presenter pointer overlay
+  pointer.update(deltaSeconds);
+
   // Gently rotate clouds layer if present
   if ((earthSys as any).clouds) {
     (earthSys as any).clouds.rotation.y += deltaSeconds * 0.02;
@@ -314,7 +333,6 @@ subscribe(() => {
   nodes.setInclinationRad(THREE.MathUtils.degToRad(s.inclinationDeg));
   
   // Live updates for scale and distances
-  earthSys.earth.scale.setScalar(s.earthRadius / 1); // base scaling relative to initial
   earthSys.setRadius?.(s.earthRadius);
   moonSys.setRadius(s.moonRadius);
   moonSys.setOrbitRadius(s.moonOrbitRadius);
@@ -322,6 +340,12 @@ subscribe(() => {
   sunSys.setOrbitRadius(s.sunOrbitRadius);
   planes.setRadii(s.sunOrbitRadius, s.moonOrbitRadius);
   nodes.setRadius(s.moonOrbitRadius);
+  pointer.setEnabled(s.showPointer);
+  // Hide native cursor when presenter pointer is enabled
+  if (appRoot) {
+    if (s.showPointer) appRoot.classList.add("hide-cursor");
+    else appRoot.classList.remove("hide-cursor");
+  }
 });
 
 // Keyboard accessibility: space = play/pause, arrow keys = position controls
