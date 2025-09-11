@@ -5,6 +5,7 @@ import {
   SUN_ORBIT_RADIUS,
   SUN_RADIUS,
 } from "../utils/constants";
+import { getDeviceDefaults } from "../utils/device";
 
 export type AppState = {
   time: number; // days
@@ -37,6 +38,9 @@ export type AppState = {
 
 type Listener = () => void;
 
+// Get device-specific defaults
+const deviceDefaults = getDeviceDefaults();
+
 const state: AppState = {
   time: 0,
   isPlaying: false, // Start paused for manual control
@@ -62,7 +66,7 @@ const state: AppState = {
   showFills: true,
   showDebug: false,
   showControlsPanel: true,
-  showPointer: true,
+  showPointer: deviceDefaults.showPointer, // Device-specific default (desktop: true, mobile: false)
 };
 
 const listeners: Set<Listener> = new Set();

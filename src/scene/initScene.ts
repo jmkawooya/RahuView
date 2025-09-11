@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { PCFSoftShadowMap } from "three";
 import { makeCamera, makeControls } from "./camera";
 import { makeStarfield, type Starfield } from "./starfield";
+import { isMobile } from "../utils/device";
 
 export type SceneBundle = {
   scene: THREE.Scene;
@@ -77,8 +78,5 @@ export function initScene(container: HTMLElement): SceneBundle {
   };
 }
 
-function isMobile(): boolean {
-  return /Mobi|Android/i.test(navigator.userAgent);
-}
 
 
