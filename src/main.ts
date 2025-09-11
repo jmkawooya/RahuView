@@ -12,6 +12,23 @@ import { updateTweens } from "./ui/tween";
 import { createPointerOverlay } from "./ui/pointerOverlay";
 import { SIDEREAL_MONTH_DAYS, SIDEREAL_YEAR_DAYS, NODAL_REGRESSION_DAYS, TWO_PI } from "./utils/constants";
 
+// Mobile viewport height fix - must be set before scene initialization
+function setMobileViewportHeight() {
+  // Calculate actual viewport height and set CSS custom property
+  const vh = window.innerHeight * 0.01;
+  document.documentElement.style.setProperty('--vh', `${vh}px`);
+}
+
+// Set initial viewport height
+setMobileViewportHeight();
+
+// Update on resize and orientation change
+window.addEventListener('resize', setMobileViewportHeight);
+window.addEventListener('orientationchange', () => {
+  // Small delay for orientation change to complete
+  setTimeout(setMobileViewportHeight, 100);
+});
+
 const canvasWrap = document.getElementById("canvas-wrap");
 if (!canvasWrap) throw new Error("Missing #canvas-wrap container");
 
@@ -85,6 +102,8 @@ onResize(() => {
   lastRendererWidth = currentWidth;
   lastRendererHeight = currentHeight;
   pointer.resize();
+  // Update mobile viewport height on resize
+  setMobileViewportHeight();
 });
 
 const eclipseIndicator = document.getElementById("eclipse-indicator") as HTMLDivElement | null;

@@ -47,6 +47,16 @@ export function initScene(container: HTMLElement): SceneBundle {
   }
   window.addEventListener("resize", onResize);
   
+  // Also listen for mobile-specific events
+  window.addEventListener("orientationchange", () => {
+    setTimeout(onResize, 100); // Delay for orientation change to complete
+  });
+  
+  // Visual viewport API support for mobile browsers
+  if (typeof window.visualViewport !== 'undefined') {
+    window.visualViewport.addEventListener('resize', onResize);
+  }
+  
   // Call resize immediately to ensure proper initial sizing
   onResize();
 

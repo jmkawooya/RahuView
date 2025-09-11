@@ -22,6 +22,11 @@
 }
 
 html,body{height:100%;margin:0;background:var(--coral);color:var(--ink);} 
+
+/* Mobile-safe viewport height using CSS custom properties */
+:root {
+  --vh: 1vh;
+} 
 h1,h2,h3{font-family:var(--font-display);letter-spacing:.2px;}
 p,li,label{font-family:var(--font-serif);} 
 .small-ui{font-family:var(--font-sans);font-size:12.5px;letter-spacing:.2px;}
@@ -51,7 +56,12 @@ p,li,label{font-family:var(--font-serif);}
 .label--accent{color:var(--maroon);} 
 
 /* layout */
-#app{height:100%;position:relative;overflow:hidden;} 
+#app{
+  height:100%;
+  height:calc(var(--vh, 1vh) * 100); /* Mobile-safe viewport height */
+  position:relative;
+  overflow:hidden;
+} 
 
 /* Fullscreen 3D Scene */
 .fullscreen-scene{
@@ -60,6 +70,7 @@ p,li,label{font-family:var(--font-serif);}
   left:0;
   width:100%;
   height:100%;
+  height:calc(var(--vh, 1vh) * 100); /* Mobile-safe viewport height */
   z-index:1;
 }
 .scene-root{
@@ -68,6 +79,7 @@ p,li,label{font-family:var(--font-serif);}
   left:0;
   width:100%;
   height:100%;
+  height:calc(var(--vh, 1vh) * 100); /* Mobile-safe viewport height */
   background:black;
 } 
 
@@ -131,11 +143,33 @@ p,li,label{font-family:var(--font-serif);}
   opacity:1.0;
 }
 
+/* Mobile-specific controls styling */
+@media (max-width: 768px) {
+  .controls-overlay {
+    width: calc(100vw - 40px);
+    max-width: 320px;
+    left: 20px;
+    right: 20px;
+    bottom: 10px;
+  }
+  
+  .controls-overlay:hover,
+  .controls-overlay:focus-within {
+    opacity: 1.0;
+  }
+}
+
 /* Collapsible panel behavior */
 .controls-overlay.is-collapsed{
   transform:translateX(-320px);
   opacity:0; /* reduces visual noise when hidden */
   pointer-events:none;
+}
+
+@media (max-width: 768px) {
+  .controls-overlay.is-collapsed {
+    transform:translateX(-100vw);
+  }
 }
 
 /* Toggle button */
@@ -223,5 +257,60 @@ p,li,label{font-family:var(--font-serif);}
 /* simple layout helpers */
 .row{display:flex;align-items:center;}
 .gap{gap:8px;}
+
+/* Additional mobile improvements */
+@media (max-width: 768px) {
+  /* Make touch targets larger on mobile */
+  .ui button {
+    padding: 8px 12px;
+    min-height: 44px;
+    font-size: 14px;
+  }
+  
+  .ui input[type="range"] {
+    height: 44px;
+    -webkit-appearance: none;
+  }
+  
+  .ui input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    height: 24px;
+    width: 24px;
+    background: var(--accent-1);
+    border-radius: 50%;
+  }
+  
+  /* Adjust header for mobile */
+  .header-overlay {
+    top: 10px;
+  }
+  
+  .logo {
+    height: 56px;
+  }
+  
+  .header-text {
+    top: 60px;
+    left: 15px;
+  }
+  
+  .subhead {
+    font-size: clamp(14px, 4vw, 20px);
+  }
+  
+  /* Prevent zoom on input focus (iOS) */
+  .ui input, .ui select, .ui textarea {
+    font-size: 16px;
+  }
+  
+  /* Panel toggle improvements */
+  .panel-toggle {
+    bottom: 15px;
+    left: 15px;
+    width: 44px;
+    height: 44px;
+    font-size: 20px;
+  }
+}
 
 
