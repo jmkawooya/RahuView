@@ -7,9 +7,11 @@ import { makeMoonSystem } from "./scene/moon";
 import { makeSunSystem } from "./scene/sun";
 import { makeEarth } from "./scene/earth";
 import { initDomControls } from "./ui/domControls";
+import { initMobileControls } from "./ui/mobileControls";
 import { actions, getState, subscribe } from "./ui/state";
 import { updateTweens } from "./ui/tween";
 import { createPointerOverlay } from "./ui/pointerOverlay";
+import { isMobile } from "./utils/device";
 import { SIDEREAL_MONTH_DAYS, SIDEREAL_YEAR_DAYS, NODAL_REGRESSION_DAYS, TWO_PI } from "./utils/constants";
 
 // Mobile viewport height fix - must be set before scene initialization
@@ -85,6 +87,11 @@ initDomControls(
     sun: { setVisible: (v: boolean) => sunSys.setVisible(v) },
   },
 );
+
+// Initialize mobile controls if on mobile device
+if (isMobile()) {
+  initMobileControls();
+}
 
 const clock = new THREE.Clock();
 let elapsedDays = 0; // simulation clock in days
